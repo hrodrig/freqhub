@@ -180,6 +180,7 @@ examples/docker/freqtrade-data-*/plot/
 examples/docker/valkey-data/*.aof
 examples/docker/valkey-data/appendonly.aof
 examples/docker/valkey-data/dump.rdb
+examples/docker/valkey-data/appendonlydir/
 !examples/docker/valkey-data/.keep
 
 # ============================================
@@ -247,6 +248,7 @@ backend/data/*.db-wal
 backend/data/*.aof
 backend/data/appendonly.aof
 backend/data/dump.rdb
+backend/data/appendonlydir/
 
 # ============================================
 # NOTE: As you add new files/directories to the project,

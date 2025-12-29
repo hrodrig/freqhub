@@ -21,6 +21,10 @@ import { getDatabase } from '../db/database.js';
 import type { BotDB } from '../db/schema.js';
 import { encryptPassword } from './encryptionService.js';
 import { botDBToBot, type Bot, type CreateBotRequest, type UpdateBotRequest } from '../models/Bot.js';
+import { cacheService } from './cache.service.js';
+import { proxyRequest } from './proxyService.js';
+import { cacheStatsService } from './cacheStats.service.js';
+import { appLogger } from '../utils/logger.js';
 
 /**
  * Get all bots
@@ -184,5 +188,191 @@ export function updateBotToken(id: string, token: string | null, expiresAt: numb
     WHERE id = ?
   `);
   stmt.run(token, expiresAt, Date.now(), id);
+  
+  // Invalidate cache when token changes
+  invalidateBotCache(id);
+}
+
+/**
+ * Cache key helpers
+ */
+function getBotStatusCacheKey(botId: string): string {
+  return `bot:${botId}:status`;
+}
+
+function getBotBalanceCacheKey(botId: string): string {
+  return `bot:${botId}:balance`;
+}
+
+function getBotTradesCacheKey(botId: string): string {
+  return `bot:${botId}:trades`;
+}
+
+function getBotStateCacheKey(botId: string): string {
+  return `bot:${botId}:state`;
+}
+
+/**
+ * Invalidate all cache for a bot
+ */
+export function invalidateBotCache(botId: string): void {
+  const keys = [
+    getBotStatusCacheKey(botId),
+    getBotBalanceCacheKey(botId),
+    getBotTradesCacheKey(botId),
+    getBotStateCacheKey(botId),
+  ];
+  keys.forEach((key) => cacheStatsService.recordInvalidation(key));
+  appLogger.debug(`Cache INVALIDATED for bot ${botId}: ${keys.join(', ')}`);
+  cacheService.delMultiple(keys).catch(() => {
+    // Silent fail - cache is optional
+  });
+}
+
+/**
+ * Get bot status with cache (TTL: 5 seconds)
+ */
+export async function getBotStatus(botId: string): Promise<unknown> {
+  const cacheKey = getBotStatusCacheKey(botId);
+  
+  // Try cache first
+  const cached = await cacheService.get(cacheKey);
+  if (cached !== null) {
+    cacheStatsService.recordHit(cacheKey);
+    appLogger.debug(`Cache HIT: ${cacheKey}`);
+    return cached;
+  }
+  
+  cacheStatsService.recordMiss(cacheKey);
+  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  
+  // Fetch from API
+  const status = await proxyRequest(botId, 'GET', 'api/v1/status');
+  
+  // Cache for 5 seconds
+  await cacheService.set(cacheKey, status, 5);
+  
+  return status;
+}
+
+/**
+ * Get bot balance with cache (TTL: 10 seconds)
+ */
+export async function getBotBalance(botId: string): Promise<unknown> {
+  const cacheKey = getBotBalanceCacheKey(botId);
+  
+  // Try cache first
+  const cached = await cacheService.get(cacheKey);
+  if (cached !== null) {
+    cacheStatsService.recordHit(cacheKey);
+    appLogger.debug(`Cache HIT: ${cacheKey}`);
+    return cached;
+  }
+  
+  cacheStatsService.recordMiss(cacheKey);
+  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  
+  // Fetch from API
+  const balance = await proxyRequest(botId, 'GET', 'api/v1/balance');
+  
+  // Cache for 10 seconds
+  await cacheService.set(cacheKey, balance, 10);
+  
+  return balance;
+}
+
+/**
+ * Get bot trades with cache (TTL: 5 seconds)
+ */
+export async function getBotTrades(botId: string, limit?: number): Promise<unknown> {
+  const cacheKey = `${getBotTradesCacheKey(botId)}:${limit || 'all'}`;
+  
+  // Try cache first
+  const cached = await cacheService.get(cacheKey);
+  if (cached !== null) {
+    cacheStatsService.recordHit(cacheKey);
+    appLogger.debug(`Cache HIT: ${cacheKey}`);
+    return cached;
+  }
+  
+  cacheStatsService.recordMiss(cacheKey);
+  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  
+  // Fetch from API
+  const path = limit ? `api/v1/trades?limit=${limit}` : 'api/v1/trades';
+  const trades = await proxyRequest(botId, 'GET', path);
+  
+  // Cache for 5 seconds
+  await cacheService.set(cacheKey, trades, 5);
+  
+  return trades;
+}
+
+/**
+ * Get bot state/config with cache (TTL: 30 seconds)
+ */
+export async function getBotState(botId: string): Promise<unknown> {
+  const cacheKey = getBotStateCacheKey(botId);
+  
+  // Try cache first
+  const cached = await cacheService.get(cacheKey);
+  if (cached !== null) {
+    cacheStatsService.recordHit(cacheKey);
+    appLogger.debug(`Cache HIT: ${cacheKey}`);
+    return cached;
+  }
+  
+  cacheStatsService.recordMiss(cacheKey);
+  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  
+  // Fetch from API
+  const state = await proxyRequest(botId, 'GET', 'api/v1/show_config');
+  
+  // Cache for 30 seconds (config changes less frequently)
+  await cacheService.set(cacheKey, state, 30);
+  
+  return state;
+}
+
+/**
+ * Get multiple bot statuses in batch (with cache)
+ */
+export async function getMultipleBotStatuses(botIds: string[]): Promise<Map<string, unknown>> {
+  const results = new Map<string, unknown>();
+  const cacheKeys = botIds.map((id) => getBotStatusCacheKey(id));
+  
+  // Try to get all from cache
+  const cached = await cacheService.mget<unknown>(cacheKeys);
+  
+  // Fetch missing ones
+  const missing: string[] = [];
+  botIds.forEach((id, index) => {
+    if (cached[index] !== null) {
+      results.set(id, cached[index]);
+    } else {
+      missing.push(id);
+    }
+  });
+  
+  // Fetch missing statuses
+  if (missing.length > 0) {
+    const fetchPromises = missing.map(async (id) => {
+      try {
+        const status = await getBotStatus(id);
+        return { id, status };
+      } catch (error) {
+        return { id, status: null, error };
+      }
+    });
+    
+    const fetched = await Promise.all(fetchPromises);
+    fetched.forEach(({ id, status }) => {
+      if (status !== null) {
+        results.set(id, status);
+      }
+    });
+  }
+  
+  return results;
 }
 

@@ -18,6 +18,9 @@
 
 import express, { type Router, type Request, type Response } from 'express';
 import { getDatabase } from '../db/database.js';
+import { cacheService } from '../services/cache.service.js';
+import { cacheStatsService } from '../services/cacheStats.service.js';
+import { valkeyService } from '../services/valkey.service.js';
 
 export function createHealthRouter(): Router {
   const router = express.Router();
@@ -60,6 +63,66 @@ export function createHealthRouter(): Router {
         status: 'error',
         timestamp: new Date().toISOString(),
         database: 'disconnected',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/healthz/cache:
+   *   get:
+   *     summary: Cache statistics and health
+   *     description: Returns cache statistics including hit rate, Valkey connection status, and top cached keys
+   *     tags: [Health]
+   *     responses:
+   *       200:
+   *         description: Cache statistics
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 valkey:
+   *                   type: object
+   *                   properties:
+   *                     enabled:
+   *                       type: boolean
+   *                     connected:
+   *                       type: boolean
+   *                     metrics:
+   *                       type: object
+   *                 cache:
+   *                   type: object
+   *                   properties:
+   *                     stats:
+   *                       type: object
+   *                     memory:
+   *                       type: object
+   */
+  router.get('/cache', async (_req: Request, res: Response) => {
+    try {
+      const valkeyConnected = await valkeyService.ping();
+      const valkeyMetrics = valkeyConnected ? await valkeyService.getMetrics() : null;
+      const cacheStats = cacheStatsService.getStats();
+      const cacheMemoryStats = cacheService.getStats();
+
+      res.json({
+        valkey: {
+          enabled: valkeyService.isEnabled(),
+          connected: valkeyConnected,
+          metrics: valkeyMetrics || null,
+        },
+        cache: {
+          stats: cacheStats,
+          memory: cacheMemoryStats,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }

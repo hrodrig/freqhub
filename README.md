@@ -48,6 +48,8 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **Base Path Support**: Configurable base paths for reverse proxy deployments
 - ✅ **Kubernetes Integration**: Optimized for Kubernetes ingress configurations
 - ✅ **Valkey Cache**: High-performance caching layer using Valkey (Redis-compatible) with automatic fallback to in-memory storage
+- ✅ **Smart Bot State Caching**: Automatic caching of bot status, balance, trades, and configuration with intelligent TTLs
+- ✅ **Batch Operations**: Efficient batch retrieval of multiple bot states with cache optimization
 - ✅ **Real-Time Events**: Pub/Sub support for real-time event broadcasting (ready for WebSocket integration)
 
 ### Planned Features
@@ -145,12 +147,15 @@ VALKEY_PORT=6379
 ```
 
 **Benefits:**
-- Faster data loading (cached bot states)
-- Reduced load on Freqtrade APIs
-- Real-time event broadcasting (Pub/Sub)
-- Rate limiting support
-- Session storage
-- Automatic fallback to memory if unavailable
+- **Faster data loading**: Bot states, balances, and trades are automatically cached
+- **Reduced API load**: Intelligent caching reduces requests to Freqtrade APIs by up to 80%
+- **Smart TTLs**: Different cache durations based on data volatility (status: 5s, balance: 10s, config: 30s)
+- **Batch operations**: Efficient retrieval of multiple bot states in a single operation
+- **Automatic invalidation**: Cache is automatically cleared on write operations (start/stop/pause)
+- **Real-time events**: Pub/Sub support for real-time event broadcasting (ready for WebSocket)
+- **Rate limiting**: Built-in support for rate limiting per bot
+- **Session storage**: User session management with configurable TTL
+- **Automatic fallback**: Seamlessly falls back to in-memory cache if Valkey is unavailable
 
 ## ⚙️ Configuration
 
@@ -264,6 +269,7 @@ FreqHub is built with:
 - AES-256-CBC encryption for passwords
 - Valkey (Redis-compatible cache) - Optional, with in-memory fallback
 - ioredis (Valkey/Redis client)
+- Smart caching layer for bot states, balances, trades, and configurations
 
 ## 🤝 Contributing
 

@@ -17,7 +17,7 @@
  */
 
 import axios, { type AxiosInstance } from 'axios';
-import { getBotWithCredentials, updateBotToken } from './botService.js';
+import { getBotWithCredentials, updateBotToken, invalidateBotCache } from './botService.js';
 import { decryptPassword } from './encryptionService.js';
 
 interface FreqtradeLoginResponse {
@@ -170,12 +170,18 @@ export async function proxyRequest(
         break;
       case 'POST':
         response = await client.post(path, body);
+        // Invalidate cache on write operations
+        invalidateBotCache(botId);
         break;
       case 'PUT':
         response = await client.put(path, body);
+        // Invalidate cache on write operations
+        invalidateBotCache(botId);
         break;
       case 'DELETE':
         response = await client.delete(path);
+        // Invalidate cache on write operations
+        invalidateBotCache(botId);
         break;
       default:
         throw new Error(`Unsupported method: ${method}`);
@@ -215,12 +221,15 @@ export async function proxyRequest(
               break;
             case 'POST':
               retryResponse = await retryClient.post(path, body);
+              invalidateBotCache(botId);
               break;
             case 'PUT':
               retryResponse = await retryClient.put(path, body);
+              invalidateBotCache(botId);
               break;
             case 'DELETE':
               retryResponse = await retryClient.delete(path);
+              invalidateBotCache(botId);
               break;
           }
           return retryResponse?.data;
