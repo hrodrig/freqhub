@@ -1,0 +1,183 @@
+# Freqhub .gitignore
+# This file uses a whitelist approach: exclude everything, then explicitly include what we need
+
+# ============================================
+# EXCLUDE EVERYTHING BY DEFAULT
+# ============================================
+*
+.*
+# Note: * excludes all files, .* explicitly excludes hidden files/directories
+
+# ============================================
+# EXPLICITLY INCLUDE ESSENTIAL FILES
+# ============================================
+
+# License file
+!LICENSE
+
+# Documentation
+!README.md
+!*.md
+
+# ============================================
+# SOURCE CODE (will be added as we create files)
+# ============================================
+
+# TypeScript/JavaScript source files
+!src/
+!src/**/*
+!*.ts
+!*.tsx
+!*.js
+!*.jsx
+
+# Configuration files
+!package.json
+!package-lock.json
+!pnpm-lock.yaml
+!yarn.lock
+!tsconfig.json
+!tsconfig.*.json
+!vite.config.ts
+!vite.config.js
+!.eslintrc.*
+!eslint.config.*
+!.prettierrc.*
+!.prettierignore
+
+# ============================================
+# BUILD & DEPLOYMENT
+# ============================================
+
+# Build output (exclude)
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# ============================================
+# DEPENDENCIES
+# ============================================
+
+# Dependencies (exclude)
+node_modules/
+.pnp
+.pnp.js
+
+# ============================================
+# ENVIRONMENT & SECRETS
+# ============================================
+
+# Environment variables (exclude)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ============================================
+# EDITOR & IDE
+# ============================================
+
+# Editor directories and files (exclude)
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ============================================
+# TESTING
+# ============================================
+
+# Test coverage (exclude)
+coverage/
+*.lcov
+.nyc_output/
+
+# ============================================
+# LOGS
+# ============================================
+
+# Logs (exclude)
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================
+# TEMPORARY FILES
+# ============================================
+
+# Temporary files (exclude)
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# ============================================
+# DOCKER
+# ============================================
+
+# Docker files (include)
+!Dockerfile
+!docker-compose.yml
+!.dockerignore
+!docker/
+
+# ============================================
+# CI/CD
+# ============================================
+
+# CI/CD configuration (include)
+!.github/
+!.github/**/*
+!.gitlab-ci.yml
+!.travis.yml
+!.circleci/
+
+# ============================================
+# PUBLIC ASSETS
+# ============================================
+
+# Public directory (include when created)
+!public/
+!public/**/*
+
+# ============================================
+# HTML & STATIC FILES
+# ============================================
+
+# HTML entry point (include)
+!index.html
+
+# ============================================
+# GIT
+# ============================================
+
+# Git files (include)
+!.gitignore
+!.gitattributes
+!.git/
+
+# ============================================
+# ADDITIONAL CONFIGURATION
+# ============================================
+
+# Nginx configuration (include when created)
+!nginx.conf
+!nginx.conf.template
+
+# Shell scripts (include)
+!*.sh
+
+# ============================================
+# NOTE: As you add new files/directories to the project,
+# add them to the whitelist above using the ! prefix
+# ============================================
+
