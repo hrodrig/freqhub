@@ -27,9 +27,23 @@ import { createBotsRouter } from './routes/bots.js';
 import { createProxyRouter } from './routes/proxy.js';
 import { getDatabase } from './db/database.js';
 import { swaggerSpec } from './config/swagger.js';
+import { valkeyService } from './services/valkey.service.js';
+import { appLogger } from './utils/logger.js';
 
 // Initialize database
 getDatabase();
+
+// Initialize Valkey (will connect if VALKEY_ENABLED=true)
+// The service initializes automatically on import
+valkeyService.ping().then((connected) => {
+  if (connected) {
+    appLogger.info('✅ Valkey cache enabled and connected');
+  } else if (env.VALKEY_ENABLED) {
+    appLogger.warn('⚠️  Valkey is enabled but not connected (will use memory fallback)');
+  }
+}).catch(() => {
+  // Silent fail - will use memory fallback
+});
 
 const app = express();
 

@@ -34,6 +34,11 @@ const envSchema = z.object({
     const normalized = val.startsWith('/') ? val : `/${val}`;
     return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
   }),
+  // Valkey/Redis configuration
+  VALKEY_HOST: z.string().default('localhost'),
+  VALKEY_PORT: z.string().default('6379').transform((val) => parseInt(val, 10)),
+  VALKEY_PASSWORD: z.string().optional(),
+  VALKEY_ENABLED: z.string().default('false').transform((val) => val === 'true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -47,6 +47,8 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **Proxy API**: Backend proxies all requests to Freqtrade with automatic authentication
 - ✅ **Base Path Support**: Configurable base paths for reverse proxy deployments
 - ✅ **Kubernetes Integration**: Optimized for Kubernetes ingress configurations
+- ✅ **Valkey Cache**: High-performance caching layer using Valkey (Redis-compatible) with automatic fallback to in-memory storage
+- ✅ **Real-Time Events**: Pub/Sub support for real-time event broadcasting (ready for WebSocket integration)
 
 ### Planned Features
 
@@ -60,6 +62,7 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - Node.js 18+ and npm/pnpm/yarn
 - One or more [Freqtrade](https://github.com/freqtrade/freqtrade) instances running with API enabled
 - Modern web browser (Chrome, Firefox, Safari, Edge)
+- **Optional**: Valkey or Redis for enhanced caching performance (recommended for production with multiple bots)
 
 ## 🛠️ Installation
 
@@ -114,6 +117,41 @@ npm run build
 docker-compose up -d
 ```
 
+### Valkey Cache Setup (Optional but Recommended)
+
+Valkey provides high-performance caching for multi-bot scenarios. It's a Redis-compatible fork with a BSD license, making it ideal for open-source projects.
+
+**With Docker Compose:**
+Valkey will be automatically included when using `docker-compose.full.yml` (see [examples/docker/README.md](examples/docker/README.md)).
+
+**Local Development:**
+```bash
+# macOS
+brew install valkey
+
+# Linux (Ubuntu/Debian)
+sudo apt-get update
+sudo apt-get install valkey
+
+# Start Valkey
+valkey-server
+```
+
+Then set in `backend/.env`:
+```env
+VALKEY_ENABLED=true
+VALKEY_HOST=localhost
+VALKEY_PORT=6379
+```
+
+**Benefits:**
+- Faster data loading (cached bot states)
+- Reduced load on Freqtrade APIs
+- Real-time event broadcasting (Pub/Sub)
+- Rate limiting support
+- Session storage
+- Automatic fallback to memory if unavailable
+
 ## ⚙️ Configuration
 
 ### Backend Environment Variables
@@ -127,7 +165,16 @@ DATABASE_PATH=./data/freqhub.db
 ENCRYPTION_KEY=your-secret-encryption-key-min-32-characters
 CORS_ORIGIN=http://localhost:3000
 LOG_LEVEL=info
+
+# Valkey Cache Configuration (Optional)
+# Valkey is a Redis-compatible fork with BSD license, recommended for open-source projects
+VALKEY_ENABLED=true
+VALKEY_HOST=localhost
+VALKEY_PORT=6379
+VALKEY_PASSWORD=  # Optional, leave empty for development
 ```
+
+**Note**: If `VALKEY_ENABLED=false` or Valkey is unavailable, the system automatically falls back to in-memory caching. This ensures the application works even without Valkey, though with reduced performance for multi-bot scenarios.
 
 ### Frontend Environment Variables
 
@@ -215,6 +262,8 @@ FreqHub is built with:
 - TypeScript
 - SQLite (with migration path to Postgres/MySQL)
 - AES-256-CBC encryption for passwords
+- Valkey (Redis-compatible cache) - Optional, with in-memory fallback
+- ioredis (Valkey/Redis client)
 
 ## 🤝 Contributing
 
