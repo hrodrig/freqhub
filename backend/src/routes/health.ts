@@ -114,7 +114,11 @@ export function createHealthRouter(): Router {
           metrics: valkeyMetrics || null,
         },
         cache: {
-          stats: cacheStats,
+          stats: {
+            total: cacheStats.total,
+            hitRate: `${cacheStats.hitRate}%`,
+            topKeys: cacheStats.keyStats.slice(0, 10), // Top 10 keys
+          },
           memory: cacheMemoryStats,
         },
         timestamp: new Date().toISOString(),

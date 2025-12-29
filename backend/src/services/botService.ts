@@ -196,8 +196,12 @@ export function updateBotToken(id: string, token: string | null, expiresAt: numb
 /**
  * Cache key helpers
  */
-function getBotStatusCacheKey(botId: string): string {
-  return `bot:${botId}:status`;
+function getBotOpenTradesCacheKey(botId: string): string {
+  return `bot:${botId}:open_trades`;
+}
+
+function getBotPingCacheKey(botId: string): string {
+  return `bot:${botId}:ping`;
 }
 
 function getBotBalanceCacheKey(botId: string): string {
@@ -217,7 +221,8 @@ function getBotStateCacheKey(botId: string): string {
  */
 export function invalidateBotCache(botId: string): void {
   const keys = [
-    getBotStatusCacheKey(botId),
+    getBotOpenTradesCacheKey(botId),
+    getBotPingCacheKey(botId),
     getBotBalanceCacheKey(botId),
     getBotTradesCacheKey(botId),
     getBotStateCacheKey(botId),
@@ -230,21 +235,21 @@ export function invalidateBotCache(botId: string): void {
 }
 
 /**
- * Get bot status with cache (TTL: 5 seconds)
+ * Get bot open trades (Freqtrade /status) with cache (TTL: 5 seconds)
  */
-export async function getBotStatus(botId: string): Promise<unknown> {
-  const cacheKey = getBotStatusCacheKey(botId);
+export async function getBotOpenTrades(botId: string): Promise<{ data: unknown; fromCache: boolean }> {
+  const cacheKey = getBotOpenTradesCacheKey(botId);
   
   // Try cache first
   const cached = await cacheService.get(cacheKey);
   if (cached !== null) {
     cacheStatsService.recordHit(cacheKey);
-    appLogger.debug(`Cache HIT: ${cacheKey}`);
-    return cached;
+    appLogger.info(`[CACHE] HIT: ${cacheKey}`);
+    return { data: cached, fromCache: true };
   }
   
   cacheStatsService.recordMiss(cacheKey);
-  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
   // Fetch from API
   const status = await proxyRequest(botId, 'GET', 'api/v1/status');
@@ -252,25 +257,51 @@ export async function getBotStatus(botId: string): Promise<unknown> {
   // Cache for 5 seconds
   await cacheService.set(cacheKey, status, 5);
   
-  return status;
+  return { data: status, fromCache: false };
+}
+
+/**
+ * Ping bot to check if it's alive (TTL: 10 seconds)
+ */
+export async function getBotPing(botId: string): Promise<{ data: unknown; fromCache: boolean }> {
+  const cacheKey = getBotPingCacheKey(botId);
+  
+  // Try cache first
+  const cached = await cacheService.get(cacheKey);
+  if (cached !== null) {
+    cacheStatsService.recordHit(cacheKey);
+    appLogger.info(`[CACHE] HIT: ${cacheKey}`);
+    return { data: cached, fromCache: true };
+  }
+  
+  cacheStatsService.recordMiss(cacheKey);
+  appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
+  
+  // Fetch from API
+  const ping = await proxyRequest(botId, 'GET', 'api/v1/ping');
+  
+  // Cache for 10 seconds
+  await cacheService.set(cacheKey, ping, 10);
+  
+  return { data: ping, fromCache: false };
 }
 
 /**
  * Get bot balance with cache (TTL: 10 seconds)
  */
-export async function getBotBalance(botId: string): Promise<unknown> {
+export async function getBotBalance(botId: string): Promise<{ data: unknown; fromCache: boolean }> {
   const cacheKey = getBotBalanceCacheKey(botId);
   
   // Try cache first
   const cached = await cacheService.get(cacheKey);
   if (cached !== null) {
     cacheStatsService.recordHit(cacheKey);
-    appLogger.debug(`Cache HIT: ${cacheKey}`);
-    return cached;
+    appLogger.info(`[CACHE] HIT: ${cacheKey}`);
+    return { data: cached, fromCache: true };
   }
   
   cacheStatsService.recordMiss(cacheKey);
-  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
   // Fetch from API
   const balance = await proxyRequest(botId, 'GET', 'api/v1/balance');
@@ -278,25 +309,25 @@ export async function getBotBalance(botId: string): Promise<unknown> {
   // Cache for 10 seconds
   await cacheService.set(cacheKey, balance, 10);
   
-  return balance;
+  return { data: balance, fromCache: false };
 }
 
 /**
  * Get bot trades with cache (TTL: 5 seconds)
  */
-export async function getBotTrades(botId: string, limit?: number): Promise<unknown> {
+export async function getBotTrades(botId: string, limit?: number): Promise<{ data: unknown; fromCache: boolean }> {
   const cacheKey = `${getBotTradesCacheKey(botId)}:${limit || 'all'}`;
   
   // Try cache first
   const cached = await cacheService.get(cacheKey);
   if (cached !== null) {
     cacheStatsService.recordHit(cacheKey);
-    appLogger.debug(`Cache HIT: ${cacheKey}`);
-    return cached;
+    appLogger.info(`[CACHE] HIT: ${cacheKey}`);
+    return { data: cached, fromCache: true };
   }
   
   cacheStatsService.recordMiss(cacheKey);
-  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
   // Fetch from API
   const path = limit ? `api/v1/trades?limit=${limit}` : 'api/v1/trades';
@@ -305,25 +336,25 @@ export async function getBotTrades(botId: string, limit?: number): Promise<unkno
   // Cache for 5 seconds
   await cacheService.set(cacheKey, trades, 5);
   
-  return trades;
+  return { data: trades, fromCache: false };
 }
 
 /**
  * Get bot state/config with cache (TTL: 30 seconds)
  */
-export async function getBotState(botId: string): Promise<unknown> {
+export async function getBotState(botId: string): Promise<{ data: unknown; fromCache: boolean }> {
   const cacheKey = getBotStateCacheKey(botId);
   
   // Try cache first
   const cached = await cacheService.get(cacheKey);
   if (cached !== null) {
     cacheStatsService.recordHit(cacheKey);
-    appLogger.debug(`Cache HIT: ${cacheKey}`);
-    return cached;
+    appLogger.info(`[CACHE] HIT: ${cacheKey}`);
+    return { data: cached, fromCache: true };
   }
   
   cacheStatsService.recordMiss(cacheKey);
-  appLogger.debug(`Cache MISS: ${cacheKey} - fetching from API`);
+  appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
   // Fetch from API
   const state = await proxyRequest(botId, 'GET', 'api/v1/show_config');
@@ -331,47 +362,45 @@ export async function getBotState(botId: string): Promise<unknown> {
   // Cache for 30 seconds (config changes less frequently)
   await cacheService.set(cacheKey, state, 30);
   
-  return state;
+  return { data: state, fromCache: false };
 }
 
 /**
- * Get multiple bot statuses in batch (with cache)
+ * Get multiple bot health summary in batch
  */
-export async function getMultipleBotStatuses(botIds: string[]): Promise<Map<string, unknown>> {
-  const results = new Map<string, unknown>();
-  const cacheKeys = botIds.map((id) => getBotStatusCacheKey(id));
+export async function getMultipleBotStatuses(botIds: string[]): Promise<Map<string, any>> {
+  const results = new Map<string, any>();
   
-  // Try to get all from cache
-  const cached = await cacheService.mget<unknown>(cacheKeys);
-  
-  // Fetch missing ones
-  const missing: string[] = [];
-  botIds.forEach((id, index) => {
-    if (cached[index] !== null) {
-      results.set(id, cached[index]);
-    } else {
-      missing.push(id);
+  if (botIds.length === 0) {
+    return results;
+  }
+
+  const fetchPromises = botIds.map(async (id) => {
+    try {
+      const [pingResult, openTradesResult] = await Promise.all([
+        getBotPing(id),
+        getBotOpenTrades(id)
+      ]);
+      
+      return { 
+        id, 
+        health: pingResult.data, 
+        open_trades_count: Array.isArray(openTradesResult.data) ? openTradesResult.data.length : 0,
+        status: 'online'
+      };
+    } catch (error) {
+      return { 
+        id, 
+        status: 'offline', 
+        error: error instanceof Error ? error.message : 'Unreachable' 
+      };
     }
   });
   
-  // Fetch missing statuses
-  if (missing.length > 0) {
-    const fetchPromises = missing.map(async (id) => {
-      try {
-        const status = await getBotStatus(id);
-        return { id, status };
-      } catch (error) {
-        return { id, status: null, error };
-      }
-    });
-    
-    const fetched = await Promise.all(fetchPromises);
-    fetched.forEach(({ id, status }) => {
-      if (status !== null) {
-        results.set(id, status);
-      }
-    });
-  }
+  const summary = await Promise.all(fetchPromises);
+  summary.forEach((item) => {
+    results.set(item.id, item);
+  });
   
   return results;
 }

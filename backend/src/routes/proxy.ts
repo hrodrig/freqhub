@@ -18,7 +18,7 @@
 
 import express, { type Router, type Request, type Response } from 'express';
 import { proxyRequest, testBotConnection } from '../services/proxyService.js';
-import { getBotWithCredentials } from '../services/botService.js';
+import { getBotWithCredentials, getBotOpenTrades, getBotPing, getBotBalance, getBotTrades, getBotState } from '../services/botService.js';
 import { decryptPassword } from '../services/encryptionService.js';
 
 export function createProxyRouter(): Router {
@@ -109,8 +109,200 @@ export function createProxyRouter(): Router {
   });
 
   /**
-   * Proxy GET request
-   * GET /api/bots/:id/proxy/*
+   * @swagger
+   * /api/bots/{id}/proxy/api/v1/ping:
+   *   get:
+   *     summary: Ping bot (cached)
+   *     description: Checks if the Freqtrade bot is alive and responding. This endpoint uses intelligent caching (10s TTL).
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot health status
+   *         headers:
+   *           X-Cache-Used:
+   *             description: Indicates if response was served from cache
+   *             schema:
+   *               type: string
+   *               example: "true"
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 status:
+   *                   type: string
+   *                   example: pong
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/status:
+   *   get:
+   *     summary: Get open trades (cached)
+   *     description: Returns the list of currently open trades from Freqtrade (/status). This endpoint uses intelligent caching (5s TTL) to reduce API load.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: List of open trades
+   *         headers:
+   *           X-Cache-Used:
+   *             description: Indicates if response was served from cache
+   *             schema:
+   *               type: string
+   *               example: "true"
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: object
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
+   * /api/bots/{id}/proxy/api/v1/balance:
+   *   get:
+   *     summary: Get bot balance (cached)
+   *     description: Returns the current balance of a Freqtrade bot. This endpoint uses intelligent caching (10s TTL) to reduce API load.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot balance
+   *         headers:
+   *           X-Cache-Used:
+   *             description: Indicates if response was served from cache
+   *             schema:
+   *               type: string
+   *               example: "true"
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/trades:
+   *   get:
+   *     summary: Get bot trades (cached)
+   *     description: Returns trades for a Freqtrade bot. This endpoint uses intelligent caching (5s TTL) to reduce API load. Supports optional limit query parameter.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *         description: Limit number of trades returned
+   *     responses:
+   *       200:
+   *         description: Bot trades
+   *         headers:
+   *           X-Cache-Used:
+   *             description: Indicates if response was served from cache
+   *             schema:
+   *               type: string
+   *               example: "true"
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/show_config:
+   *   get:
+   *     summary: Get bot configuration (cached)
+   *     description: Returns the configuration of a Freqtrade bot. This endpoint uses intelligent caching (30s TTL) to reduce API load.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot configuration
+   *         headers:
+   *           X-Cache-Used:
+   *             description: Indicates if response was served from cache
+   *             schema:
+   *               type: string
+   *               example: "true"
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/{path}:
+   *   get:
+   *     summary: Proxy GET request to Freqtrade
+   *     description: Proxies any GET request to the Freqtrade bot instance. Common endpoints like /api/v1/status, /api/v1/balance, /api/v1/trades, and /api/v1/show_config are automatically cached.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: path
+   *         name: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Freqtrade API path (e.g., api/v1/status, api/v1/balance)
+   *     responses:
+   *       200:
+   *         description: Response from Freqtrade API
+   *         headers:
+   *           X-Cache-Used:
+   *             description: Indicates if response was served from cache (only for cached endpoints)
+   *             schema:
+   *               type: string
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.get('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
@@ -119,7 +311,73 @@ export function createProxyRouter(): Router {
       const queryString = req.url.includes('?') ? req.url.split('?')[1] : '';
       const finalPath = queryString ? `${fullPath}?${queryString}` : fullPath;
 
-      const data = await proxyRequest(req.params.id, 'GET', finalPath);
+      // Use cached functions for common endpoints
+      let data: unknown;
+      let usesCache = false; // Whether this endpoint supports caching (may still be a MISS)
+
+      // Normalize path (remove leading slash for comparison)
+      const normalizedPath = fullPath.replace(/^\/+/, '');
+      
+      // Import logger
+      const { appLogger } = await import('../utils/logger.js');
+      appLogger.info(`[PROXY] GET ${normalizedPath} for bot ${req.params.id}`);
+
+      let fromCache = false;
+
+      if (normalizedPath === 'api/v1/status') {
+        usesCache = true;
+        appLogger.info('[PROXY] Using getBotOpenTrades (Freqtrade /status)');
+        const result = await getBotOpenTrades(req.params.id);
+        data = result.data;
+        fromCache = result.fromCache;
+      } else if (normalizedPath === 'api/v1/ping') {
+        usesCache = true;
+        appLogger.info('[PROXY] Using getBotPing');
+        const result = await getBotPing(req.params.id);
+        data = result.data;
+        fromCache = result.fromCache;
+      } else if (normalizedPath === 'api/v1/balance') {
+        usesCache = true;
+        appLogger.info('[PROXY] Using getBotBalance (with cache support)');
+        const result = await getBotBalance(req.params.id);
+        data = result.data;
+        fromCache = result.fromCache;
+      } else if (normalizedPath.startsWith('api/v1/trades')) {
+        usesCache = true;
+        appLogger.info('[PROXY] Using getBotTrades (with cache support)');
+        // Extract limit from query string if present
+        const limitMatch = queryString?.match(/limit=(\d+)/);
+        const limit = limitMatch ? parseInt(limitMatch[1], 10) : undefined;
+        const result = await getBotTrades(req.params.id, limit);
+        data = result.data;
+        fromCache = result.fromCache;
+      } else if (normalizedPath === 'api/v1/show_config') {
+        usesCache = true;
+        appLogger.info('[PROXY] Using getBotState (with cache support)');
+        const result = await getBotState(req.params.id);
+        data = result.data;
+        fromCache = result.fromCache;
+      } else {
+        appLogger.info(`[PROXY] Direct proxy (no cache) for path: ${normalizedPath}`);
+        // For other endpoints, use direct proxy
+        data = await proxyRequest(req.params.id, 'GET', finalPath);
+      }
+
+      // Add cache indicator headers
+      if (usesCache) {
+        res.setHeader('X-Cache-Supported', 'true');
+        res.setHeader('X-Cache-Used', fromCache ? 'true' : 'false');
+        
+        // Add cache statistics
+        const { cacheStatsService } = await import('../services/cacheStats.service.js');
+        const stats = cacheStatsService.getStats();
+        res.setHeader('X-Cache-Hit-Rate', `${stats.hitRate}%`);
+        res.setHeader('X-Cache-Total-Hits', stats.total.hits.toString());
+        res.setHeader('X-Cache-Total-Misses', stats.total.misses.toString());
+      } else {
+        res.setHeader('X-Cache-Supported', 'false');
+      }
+
       res.json(data);
     } catch (error) {
       res.status(500).json({
@@ -130,8 +388,45 @@ export function createProxyRouter(): Router {
   });
 
   /**
-   * Proxy POST request
-   * POST /api/bots/:id/proxy/*
+   * @swagger
+   * /api/bots/{id}/proxy/{path}:
+   *   post:
+   *     summary: Proxy POST request to Freqtrade
+   *     description: Proxies any POST request to the Freqtrade bot instance. Cache is automatically invalidated for the bot on write operations.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: path
+   *         name: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Freqtrade API path
+   *     requestBody:
+   *       description: Request body to forward to Freqtrade
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: Response from Freqtrade API
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.post('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
@@ -149,8 +444,45 @@ export function createProxyRouter(): Router {
   });
 
   /**
-   * Proxy PUT request
-   * PUT /api/bots/:id/proxy/*
+   * @swagger
+   * /api/bots/{id}/proxy/{path}:
+   *   put:
+   *     summary: Proxy PUT request to Freqtrade
+   *     description: Proxies any PUT request to the Freqtrade bot instance. Cache is automatically invalidated for the bot on write operations.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: path
+   *         name: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Freqtrade API path
+   *     requestBody:
+   *       description: Request body to forward to Freqtrade
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *     responses:
+   *       200:
+   *         description: Response from Freqtrade API
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.put('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
@@ -168,8 +500,39 @@ export function createProxyRouter(): Router {
   });
 
   /**
-   * Proxy DELETE request
-   * DELETE /api/bots/:id/proxy/*
+   * @swagger
+   * /api/bots/{id}/proxy/{path}:
+   *   delete:
+   *     summary: Proxy DELETE request to Freqtrade
+   *     description: Proxies any DELETE request to the Freqtrade bot instance. Cache is automatically invalidated for the bot on write operations.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: path
+   *         name: path
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Freqtrade API path
+   *     responses:
+   *       200:
+   *         description: Response from Freqtrade API
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Error'
    */
   router.delete('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
