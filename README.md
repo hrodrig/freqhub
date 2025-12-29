@@ -220,6 +220,10 @@ FreqHub is built with:
 
 Contributions are welcome! This project is in early development and we'd love your help.
 
+### Code of Conduct
+
+This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
+
 ### Development Workflow
 
 1. Fork the repository
