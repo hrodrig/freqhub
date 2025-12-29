@@ -6,7 +6,7 @@ This example shows how to run multiple Freqtrade instances using Docker Compose,
 
 ```
 examples/docker/
-├── docker-compose.yml      # Configuration for multiple instances
+├── docker-compose.yml      # Configuration for multiple instances + Valkey
 ├── config.json.example     # Base Freqtrade configuration
 ├── .env.example           # Environment variables template (copy to .env)
 ├── setup.sh               # Setup script
@@ -21,6 +21,8 @@ examples/docker/
     ├── config.json        # Bot 3 configuration
     └── strategies/        # Bot 3 strategies
 ```
+
+**Note**: This example includes a **Valkey** service (Redis-compatible cache) that can be used by FreqHub for improved performance. Valkey is optional - FreqHub will work without it, but caching is recommended for multi-bot scenarios.
 
 ## Initial Setup
 
@@ -129,6 +131,7 @@ docker-compose up -d
 ```
 
 This will start:
+- **valkey** (cache service) at `localhost:6379` (optional, for FreqHub caching)
 - **freqtrade-bot-1** at `http://localhost:8080`
 - **freqtrade-bot-2** at `http://localhost:8081`
 - **freqtrade-bot-3** at `http://localhost:8082`
@@ -302,8 +305,52 @@ For production:
 6. **Monitor resources** (CPU, memory, disk)
 7. **Verify exchange credentials** are correctly configured before enabling live trading
 
+## Valkey Cache (Optional)
+
+This example includes a **Valkey** service (Redis-compatible fork with BSD license) that provides high-performance caching for FreqHub.
+
+### What is Valkey?
+
+Valkey is a Redis-compatible in-memory data store that FreqHub uses for:
+- Caching bot states (faster data loading)
+- Real-time event broadcasting (Pub/Sub)
+- Rate limiting
+- Session storage
+
+### Configuration
+
+Valkey is automatically started with the Freqtrade instances. To use it with FreqHub:
+
+1. **In FreqHub backend `.env`**:
+   ```env
+   VALKEY_ENABLED=true
+   VALKEY_HOST=localhost  # or 'valkey' if running in same Docker network
+   VALKEY_PORT=6379
+   ```
+
+2. **If running FreqHub in Docker**, use the service name:
+   ```env
+   VALKEY_HOST=valkey
+   ```
+
+### Benefits
+
+- ✅ Faster data loading (cached bot states)
+- ✅ Reduced load on Freqtrade APIs
+- ✅ Better performance with multiple bots
+- ✅ Automatic fallback to memory if Valkey is unavailable
+
+### Disabling Valkey
+
+If you don't want to use Valkey, you can:
+1. Remove the `valkey` service from `docker-compose.yml`
+2. Set `VALKEY_ENABLED=false` in FreqHub backend `.env`
+
+FreqHub will automatically fall back to in-memory caching.
+
 ## Additional Resources
 
 - [Freqtrade Documentation](https://www.freqtrade.io/)
 - [Freqtrade Docker](https://github.com/freqtrade/freqtrade#docker)
 - [FreqHub README](../../README.md)
+- [Valkey Documentation](https://valkey.io/)

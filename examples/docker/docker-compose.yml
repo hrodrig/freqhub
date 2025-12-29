@@ -2,6 +2,24 @@
 # This example creates 3 Freqtrade bots that can be managed by FreqHub
 
 services:
+  # Valkey Cache (Redis-compatible) - Optional but recommended for FreqHub
+  valkey:
+    image: valkey/valkey:7.2
+    container_name: freqtrade-valkey
+    ports:
+      - "${VALKEY_PORT:-6379}:6379"
+    volumes:
+      - ./valkey-data:/data
+    command: valkey-server --appendonly yes
+    networks:
+      - freqtrade-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
   # Freqtrade Bot Instance 1
   freqtrade-bot-1:
     image: freqtradeorg/freqtrade:stable

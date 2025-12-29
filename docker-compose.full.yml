@@ -1,4 +1,23 @@
 services:
+  # Valkey Cache (Redis-compatible)
+  valkey:
+    image: valkey/valkey:7.2
+    container_name: freqhub-valkey
+    ports:
+      - "${VALKEY_PORT:-6379}:6379"
+    volumes:
+      - ./backend/data:/data
+    command: valkey-server --appendonly yes
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   # FreqHub Backend
   backend:
     build:
@@ -14,11 +33,19 @@ services:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-this-encryption-key-min-32-characters-long}
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      # Valkey Cache Configuration
+      - VALKEY_ENABLED=${VALKEY_ENABLED:-true}
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=${VALKEY_PASSWORD:-}
     volumes:
       - ./backend/data:/app/data
     networks:
       - freqhub-network
     restart: unless-stopped
+    depends_on:
+      valkey:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/healthz"]
       interval: 30s
