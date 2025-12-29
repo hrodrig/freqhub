@@ -10,30 +10,50 @@
 
 This project is currently in **early development** (alpha stage) and is not yet ready for production use. Features are being actively developed and the API may change without notice.
 
+## ⚖️ Disclaimer
+
+**USE AT YOUR OWN RISK**
+
+This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
+
+**Trading cryptocurrencies involves substantial risk of loss and is not suitable for every investor.** The value of cryptocurrencies may fluctuate, and you may lose some or all of your investment. Past performance is not indicative of future results. You should carefully consider whether trading cryptocurrencies is suitable for you in light of your circumstances, knowledge, and financial resources.
+
+By using this software, you acknowledge that:
+- You understand the risks involved in cryptocurrency trading
+- You are solely responsible for any trading decisions made
+- The authors and contributors are not responsible for any financial losses
+- You will not hold the authors liable for any damages arising from the use of this software
+
 ## 🎯 Why FreqHub?
 
 While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot interface, FreqHub addresses the need for **simultaneous multi-bot management**:
 
 - **Multi-Bot Dashboard**: Monitor and control multiple Freqtrade instances simultaneously
+- **Backend API**: Secure storage of bot credentials in SQLite database
+- **Proxy System**: Backend acts as proxy to Freqtrade, avoiding CORS issues
 - **Kubernetes-Ready**: Designed for containerized deployments with configurable base paths
 - **Strategy Comparison**: Compare performance across different trading strategies
 - **Unified Interface**: Single dashboard for all your trading operations
-- **Real-Time Updates**: WebSocket support for live data from all connected bots
+- **Real-Time Updates**: WebSocket support for live data from all connected bots (coming soon)
 
 ## 🚀 Features
 
-### Planned Features
+### Implemented Features
 
 - ✅ **Multi-Bot Management**: Connect to multiple Freqtrade API instances
+- ✅ **Secure Storage**: Bot credentials encrypted and stored in SQLite database
 - ✅ **Unified Dashboard**: Aggregate view of all bots' performance
 - ✅ **Individual Bot Views**: Detailed views for each bot instance
-- ✅ **Strategy Comparison**: Side-by-side comparison of trading strategies
-- ✅ **Real-Time Monitoring**: WebSocket connections for live updates
+- ✅ **Proxy API**: Backend proxies all requests to Freqtrade with automatic authentication
 - ✅ **Base Path Support**: Configurable base paths for reverse proxy deployments
 - ✅ **Kubernetes Integration**: Optimized for Kubernetes ingress configurations
+
+### Planned Features
+
 - 🔄 **Trade Management**: Execute trades across multiple bots
 - 🔄 **Backtest Comparison**: Compare backtest results across strategies
 - 🔄 **Alert System**: Centralized alerts from all bot instances
+- 🔄 **WebSocket Support**: Real-time updates via WebSocket
 
 ## 📋 Prerequisites
 
@@ -50,46 +70,73 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 git clone https://github.com/hrodrig/freqhub.git
 cd freqhub
 
-# Install dependencies
-pnpm install  # or npm install / yarn install
+# Backend setup
+cd backend
+cp .env.example .env
+# Edit .env with your configuration
+npm install  # or pnpm install / yarn install
 
-# Start development server
-pnpm dev  # or npm run dev / yarn dev
+# Option 1: Use the example database (recommended for first-time setup)
+cp data/freqhub.db.example data/freqhub.db
+
+# Option 2: Start with an empty database (will be created automatically)
+# Just run: npm run dev
+
+npm run dev
+
+# Frontend setup (in another terminal)
+cd frontend
+cp .env.example .env
+npm install  # or pnpm install / yarn install
+npm run dev
 ```
 
-The development server will start on `http://localhost:3000` (or the next available port).
+The backend will start on `http://localhost:3001` and the frontend on `http://localhost:3000`.
 
 ### Production Build
 
 ```bash
-# Build for production
-pnpm build  # or npm run build / yarn build
+# Build backend
+cd backend
+npm run build
+npm start
 
-# Preview production build
-pnpm preview  # or npm run preview / yarn preview
+# Build frontend
+cd frontend
+npm run build
+# Serve the dist/ directory with your web server
 ```
 
 ### Docker Deployment
 
 ```bash
-# Build Docker image
-docker build -t freqhub .
-
-# Run container
-docker run -d \
-  -p 3000:80 \
-  -e BASE_PATH=/freqhub/ \
-  freqhub
+# Build and run with docker-compose
+docker-compose up -d
 ```
 
 ## ⚙️ Configuration
 
-### Environment Variables
+### Backend Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `VITE_BASE_PATH` | Base path for the application (e.g., `/freqhub/`) | `/` |
-| `VITE_API_PROXY_TARGET` | API proxy target for development | `http://127.0.0.1:8080` |
+Create `backend/.env`:
+
+```env
+PORT=3001
+NODE_ENV=production
+DATABASE_PATH=./data/freqhub.db
+ENCRYPTION_KEY=your-secret-encryption-key-min-32-characters
+CORS_ORIGIN=http://localhost:3000
+LOG_LEVEL=info
+```
+
+### Frontend Environment Variables
+
+Create `frontend/.env`:
+
+```env
+VITE_BASE_PATH=/
+VITE_API_PROXY_TARGET=http://localhost:3001
+```
 
 ### Base Path Configuration
 
@@ -124,37 +171,50 @@ Each Freqtrade instance must have the API enabled with CORS configured:
 
 ### Adding a Bot
 
-1. Navigate to the bot management section
+1. Navigate to "Bots" in the navigation
 2. Click "Add Bot"
-3. Enter the Freqtrade API URL (e.g., `http://freqtrade-pod-1:8080`)
-4. Enter your API credentials
-5. Save and connect
+3. Enter:
+   - Bot name
+   - Freqtrade API URL (e.g., `http://freqtrade-pod-1:8080`)
+   - Username
+   - Password
+4. The system will test the connection before saving
+5. Bot is added and ready to use
 
 ### Dashboard View
 
 The main dashboard provides:
 - **Aggregated Statistics**: Total profit, win rate, active trades across all bots
 - **Bot Status**: Health and status of each connected bot
-- **Quick Actions**: Start/stop bots, view logs, manage strategies
+- **Quick Access**: Click on any bot to view details
 
 ### Individual Bot Views
 
 Click on any bot to view:
 - Real-time trading performance
 - Active trades and positions
-- Strategy details and configuration
-- Historical performance charts
+- Historical trades
+- Balance and profit information
+- Bot controls (start/stop/pause)
 
 ## 🏗️ Architecture
 
 FreqHub is built with:
 
-- **React 18**: Modern React with hooks and concurrent features
-- **TypeScript**: Type-safe development
-- **Vite**: Fast build tool and dev server
-- **React Router**: Client-side routing
-- **WebSocket**: Real-time data updates
-- **State Management**: Context API / Zustand (TBD)
+**Frontend:**
+- React 18
+- TypeScript
+- Vite
+- React Router
+- Zustand (State Management)
+- Axios
+
+**Backend:**
+- Node.js 18+
+- Express
+- TypeScript
+- SQLite (with migration path to Postgres/MySQL)
+- AES-256-CBC encryption for passwords
 
 ## 🤝 Contributing
 
@@ -178,6 +238,14 @@ Contributions are welcome! This project is in early development and we'd love yo
 
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
+**Copyright (C) 2025 FreqHub Contributors**
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but **WITHOUT ANY WARRANTY**; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 ## 🙏 Acknowledgments
 
 - [Freqtrade](https://github.com/freqtrade/freqtrade) - The amazing trading bot this project is built for
@@ -188,18 +256,6 @@ This project is licensed under the **GNU General Public License v3.0** - see the
 - **Issues**: [GitHub Issues](https://github.com/hrodrig/freqhub/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/hrodrig/freqhub/discussions)
 
-## 🔮 Roadmap
-
-- [ ] Core multi-bot dashboard
-- [ ] Real-time WebSocket integration
-- [ ] Strategy comparison tools
-- [ ] Backtest result comparison
-- [ ] Alert and notification system
-- [ ] Kubernetes Helm charts
-- [ ] Comprehensive documentation
-- [ ] Unit and integration tests
-
 ---
 
 **Note**: FreqHub is an independent project and is not officially affiliated with the Freqtrade project.
-

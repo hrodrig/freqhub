@@ -18,12 +18,18 @@
 # Documentation
 !README.md
 !*.md
+!COPYRIGHT_HEADER.txt
+!COPYRIGHT_GUIDE.md
 
 # ============================================
 # SOURCE CODE (will be added as we create files)
 # ============================================
 
 # TypeScript/JavaScript source files
+!frontend/
+!frontend/**/*
+!backend/
+!backend/**/*
 !src/
 !src/**/*
 !*.ts
@@ -54,6 +60,10 @@ dist/
 build/
 out/
 *.tsbuildinfo
+
+# Explicitly exclude dist directories in backend and frontend
+backend/dist/
+frontend/dist/
 
 # ============================================
 # DEPENDENCIES
@@ -127,8 +137,41 @@ lerna-debug.log*
 # Docker files (include)
 !Dockerfile
 !docker-compose.yml
+!docker-compose.full.yml
 !.dockerignore
 !docker/
+!docker/**/*
+
+# ============================================
+# EXAMPLES
+# ============================================
+
+# Examples directory (include)
+!examples/
+!examples/**/*
+
+# Exclude sensitive files in examples
+examples/**/.env
+examples/**/secret.yaml
+!examples/**/secret.yaml.example
+!examples/**/.env.example
+
+# Include Freqtrade data directories and configs (in examples/docker/)
+!examples/docker/freqtrade-data-*/
+!examples/docker/freqtrade-data-*/config.json
+!examples/docker/freqtrade-data-*/strategies/
+!examples/docker/freqtrade-data-*/strategies/*.py
+
+# Exclude generated files inside freqtrade-data directories
+examples/docker/freqtrade-data-*/*.db
+examples/docker/freqtrade-data-*/*.sqlite
+examples/docker/freqtrade-data-*/*.sqlite3
+examples/docker/freqtrade-data-*/logs/
+examples/docker/freqtrade-data-*/.freqtrade/
+examples/docker/freqtrade-data-*/backtest_results/
+examples/docker/freqtrade-data-*/hyperopt_results/
+examples/docker/freqtrade-data-*/data/
+examples/docker/freqtrade-data-*/plot/
 
 # ============================================
 # CI/CD
@@ -155,6 +198,7 @@ lerna-debug.log*
 
 # HTML entry point (include)
 !index.html
+!frontend/index.html
 
 # ============================================
 # GIT
@@ -173,8 +217,22 @@ lerna-debug.log*
 !nginx.conf
 !nginx.conf.template
 
+# Scripts directory (include)
+!scripts/
+!scripts/**/*
+
 # Shell scripts (include)
 !*.sh
+
+# ============================================
+# DATABASE
+# ============================================
+
+# Exclude development databases
+backend/data/*.db
+backend/data/*.db-shm
+backend/data/*.db-wal
+!backend/data/freqhub.db.example
 
 # ============================================
 # NOTE: As you add new files/directories to the project,

@@ -1,0 +1,27 @@
+server {
+    listen       80;
+    server_name  localhost;
+    root         /usr/share/nginx/html;
+    index        index.html;
+
+    # Base path configuration
+    location ${BASE_PATH} {
+        alias /usr/share/nginx/html/;
+        try_files $uri $uri/ ${BASE_PATH}index.html;
+    }
+
+    # If BASE_PATH is set and not root, redirect root to base path
+    location = / {
+        if ($BASE_PATH != "/") {
+            return 301 ${BASE_PATH};
+        }
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+}
+

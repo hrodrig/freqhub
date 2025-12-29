@@ -1,0 +1,107 @@
+/*
+ * FreqHub - Multi-bot dashboard for Freqtrade
+ * Copyright (C) 2025  FreqHub Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import express from 'express';
+import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import { env } from './config/env.js';
+import { logger } from './middleware/logger.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { createHealthRouter } from './routes/health.js';
+import { createBotsRouter } from './routes/bots.js';
+import { createProxyRouter } from './routes/proxy.js';
+import { getDatabase } from './db/database.js';
+import { swaggerSpec } from './config/swagger.js';
+
+// Initialize database
+getDatabase();
+
+const app = express();
+
+// Middleware
+app.use(cors({
+  origin: env.CORS_ORIGIN,
+  credentials: true,
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(logger);
+
+// Base path configuration
+// BASE_PATH can be set via:
+// - Environment variable: BASE_PATH=/freqhub
+// - .env file: BASE_PATH=/freqhub
+// - Command line: BASE_PATH=/freqhub npm start
+// The base path is prepended to all routes, e.g.:
+//   BASE_PATH=/freqhub -> /freqhub/api/healthz, /freqhub/api/bots
+//   BASE_PATH= (empty) -> /api/healthz, /api/bots
+const basePath = env.BASE_PATH || '';
+
+// Swagger UI - API Documentation
+app.use(`${basePath}/api-docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'FreqHub API Documentation',
+  swaggerOptions: {
+    // Use the first server (development) by default
+    defaultModelsExpandDepth: 1,
+    defaultModelExpandDepth: 1,
+    displayRequestDuration: true,
+    docExpansion: 'list',
+    filter: true,
+    showExtensions: true,
+    showCommonExtensions: true,
+  },
+}));
+
+// Swagger JSON endpoint
+app.get(`${basePath}/api-docs.json`, (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+// Routes with configurable base path
+app.use(`${basePath}/api/healthz`, createHealthRouter());
+app.use(`${basePath}/api/bots`, createBotsRouter());
+app.use(`${basePath}/api/bots`, createProxyRouter());
+
+// Error handling
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+// Start server
+const PORT = parseInt(env.PORT, 10);
+
+app.listen(PORT, () => {
+  console.log(`🚀 FreqHub Backend running on http://localhost:${PORT}`);
+  console.log(`📊 Environment: ${env.NODE_ENV}`);
+  console.log(`💾 Database: ${env.DATABASE_PATH}`);
+  if (basePath) {
+    console.log(`🔗 Base Path: ${basePath}`);
+    console.log(`   Health: http://localhost:${PORT}${basePath}/api/healthz`);
+    console.log(`   Bots: http://localhost:${PORT}${basePath}/api/bots`);
+    console.log(`   Swagger: http://localhost:${PORT}${basePath}/api-docs`);
+  } else {
+    console.log(`🔗 Base Path: / (root)`);
+    console.log(`   Health: http://localhost:${PORT}/api/healthz`);
+    console.log(`   Bots: http://localhost:${PORT}/api/bots`);
+    console.log(`   Swagger: http://localhost:${PORT}/api-docs`);
+  }
+});
+
+export default app;
+
