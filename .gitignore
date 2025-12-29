@@ -165,6 +165,8 @@ examples/**/secret.yaml
 # Exclude generated files inside freqtrade-data directories
 examples/docker/freqtrade-data-*/*.db
 examples/docker/freqtrade-data-*/*.sqlite
+examples/docker/freqtrade-data-*/*.sqlite-shm
+examples/docker/freqtrade-data-*/*.sqlite-wal
 examples/docker/freqtrade-data-*/*.sqlite3
 examples/docker/freqtrade-data-*/logs/
 examples/docker/freqtrade-data-*/.freqtrade/
