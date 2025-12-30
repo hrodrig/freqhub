@@ -11,6 +11,7 @@
 # ============================================
 # EXPLICITLY INCLUDE ESSENTIAL FILES
 # ============================================
+!Makefile
 
 # License file
 !LICENSE

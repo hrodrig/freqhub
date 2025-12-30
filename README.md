@@ -72,7 +72,40 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 
 ## 🛠️ Installation
 
-### Development Setup
+### Quick Start with Makefile (Recommended)
+
+FreqHub includes a Makefile for easy automation. After cloning the repository:
+
+```bash
+# Complete setup (installs dependencies, creates .env files, sets up example DB)
+make setup
+
+# Start development servers (backend + frontend)
+make dev
+
+# Or start them separately
+make dev-backend  # Backend only
+make dev-frontend  # Frontend only
+```
+
+**Available Makefile commands:**
+- `make help` - Show all available commands
+- `make setup` - Complete initial setup
+- `make install` - Install all dependencies
+- `make dev` - Start both backend and frontend
+- `make build` - Build for production
+- `make docker-up` - Start with Docker Compose
+- `make lint` - Run linters
+- `make format` - Format code
+- `make test-websocket` - Test WebSocket connection
+- `make test-polling` - Test polling service
+- `make status` - Check service status
+
+See `make help` for the complete list of commands.
+
+### Manual Setup
+
+If you prefer to set up manually:
 
 ```bash
 # Clone the repository
@@ -104,6 +137,14 @@ The backend will start on `http://localhost:3001` and the frontend on `http://lo
 
 ### Production Build
 
+**With Makefile:**
+```bash
+make build        # Build both backend and frontend
+make build-backend   # Backend only
+make build-frontend  # Frontend only
+```
+
+**Manual:**
 ```bash
 # Build backend
 cd backend
@@ -118,9 +159,18 @@ npm run build
 
 ### Docker Deployment
 
+**With Makefile:**
+```bash
+make docker-up      # Start all services
+make docker-down    # Stop all services
+make docker-logs    # View logs
+make docker-build   # Build images
+```
+
+**Manual:**
 ```bash
 # Build and run with docker-compose
-docker-compose up -d
+docker-compose -f docker-compose.full.yml up -d
 ```
 
 ### Valkey Cache Setup (Optional but Recommended)
