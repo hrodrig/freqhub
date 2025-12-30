@@ -1,0 +1,134 @@
+/*
+ * FreqHub - Multi-bot dashboard for Freqtrade
+ * Copyright (C) 2025  FreqHub Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+import express, { type Router, type Request, type Response } from 'express';
+import { eventBusService } from '../services/eventBus.service.js';
+import { websocketService } from '../services/websocket.service.js';
+import { appLogger } from '../utils/logger.js';
+
+export function createTestRouter(): Router {
+  const router = express.Router();
+
+  /**
+   * @swagger
+   * /api/test/event:
+   *   post:
+   *     summary: Publish a test event (for development/testing)
+   *     description: Manually publish an event to the EventBus. Useful for testing WebSocket connections.
+   *     tags: [Testing]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - type
+   *             properties:
+   *               type:
+   *                 type: string
+   *                 example: "test_event"
+   *               botId:
+   *                 type: string
+   *                 example: "bot-123"
+   *               data:
+   *                 type: object
+   *                 example: { message: "Hello from test endpoint" }
+   *     responses:
+   *       200:
+   *         description: Event published successfully
+   *       400:
+   *         description: Invalid request body
+   */
+  router.post('/event', async (req: Request, res: Response) => {
+    try {
+      const { type, botId, data } = req.body;
+
+      if (!type || typeof type !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid "type" field',
+        });
+      }
+
+      await eventBusService.publish({
+        type,
+        botId,
+        data: data || {},
+      });
+
+      appLogger.info(`Test event published: ${type}${botId ? ` (bot: ${botId})` : ''}`);
+
+      res.json({
+        success: true,
+        message: 'Event published successfully',
+        event: {
+          type,
+          botId,
+          data,
+          timestamp: Date.now(),
+        },
+        websocket: {
+          connectedClients: websocketService.getConnectedCount(),
+        },
+      });
+    } catch (error) {
+      appLogger.error('Error publishing test event:', error);
+      res.status(500).json({
+        error: 'Failed to publish event',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/test/websocket:
+   *   get:
+   *     summary: Get WebSocket connection info (for testing)
+   *     description: Returns current WebSocket statistics and connection details
+   *     tags: [Testing]
+   *     responses:
+   *       200:
+   *         description: WebSocket information
+   */
+  router.get('/websocket', (_req: Request, res: Response) => {
+    const stats = websocketService.getStats();
+    res.json({
+      websocket: stats,
+      info: {
+        endpoint: '/socket.io',
+        events: {
+          subscribe: 'subscribe:bot',
+          unsubscribe: 'unsubscribe:bot',
+          system: 'subscribe:system',
+        },
+        receivedEvents: [
+          'bot_event',
+          'system_event',
+          'broadcast_event',
+          'subscribed',
+          'unsubscribed',
+        ],
+      },
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  return router;
+}
+

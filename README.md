@@ -34,7 +34,8 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - **Kubernetes-Ready**: Designed for containerized deployments with configurable base paths
 - **Strategy Comparison**: Compare performance across different trading strategies
 - **Unified Interface**: Single dashboard for all your trading operations
-- **Real-Time Updates**: WebSocket support for live data from all connected bots (coming soon)
+- **Real-Time Updates**: WebSocket support for live data from all connected bots
+- **Event Bus**: Centralized event system with Valkey Pub/Sub for real-time notifications
 
 ## 🚀 Features
 
@@ -50,14 +51,16 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **Valkey Cache**: High-performance caching layer using Valkey (Redis-compatible) with automatic fallback to in-memory storage
 - ✅ **Smart Bot State Caching**: Automatic caching of bot status, balance, trades, and configuration with intelligent TTLs
 - ✅ **Batch Operations**: Efficient batch retrieval of multiple bot states with cache optimization
-- ✅ **Real-Time Events**: Pub/Sub support for real-time event broadcasting (ready for WebSocket integration)
+- ✅ **Event Bus**: Centralized event system with Valkey Pub/Sub for distributed event broadcasting
+- ✅ **WebSocket Support**: Real-time bidirectional communication for live updates to the frontend
+- ✅ **Real-Time Bot Updates**: Automatic event publishing when bot data changes (trades, balance, status)
 
 ### Planned Features
 
 - 🔄 **Trade Management**: Execute trades across multiple bots
 - 🔄 **Backtest Comparison**: Compare backtest results across strategies
 - 🔄 **Alert System**: Centralized alerts from all bot instances
-- 🔄 **WebSocket Support**: Real-time updates via WebSocket
+- 🔄 **Polling Service**: Background service to keep bot data fresh in cache
 
 ## 📋 Prerequisites
 
@@ -152,7 +155,8 @@ VALKEY_PORT=6379
 - **Smart TTLs**: Different cache durations based on data volatility (status: 5s, balance: 10s, config: 30s)
 - **Batch operations**: Efficient retrieval of multiple bot states in a single operation
 - **Automatic invalidation**: Cache is automatically cleared on write operations (start/stop/pause)
-- **Real-time events**: Pub/Sub support for real-time event broadcasting (ready for WebSocket)
+- **Real-time events**: Event Bus with Valkey Pub/Sub for distributed event broadcasting
+- **WebSocket integration**: Real-time updates pushed to frontend via Socket.io
 - **Rate limiting**: Built-in support for rate limiting per bot
 - **Session storage**: User session management with configurable TTL
 - **Automatic fallback**: Seamlessly falls back to in-memory cache if Valkey is unavailable
@@ -219,6 +223,43 @@ Each Freqtrade instance must have the API enabled with CORS configured:
 }
 ```
 
+## 🧪 Testing & Validation
+
+### WebSocket Testing
+
+FreqHub includes tools to test and validate the Event Bus and WebSocket functionality:
+
+**1. WebSocket Test Client:**
+```bash
+cd backend
+npm run test:websocket [botId]
+```
+
+This connects to the WebSocket server and listens for real-time events. You can publish test events using the test endpoint (see below).
+
+**2. Test Endpoints (Development Only):**
+
+- **Publish Test Event**: `POST /api/test/event`
+  ```bash
+  curl -X POST http://localhost:3001/api/test/event \
+    -H "Content-Type: application/json" \
+    -d '{"type":"test_event","botId":"test-bot-1","data":{"message":"Hello!"}}'
+  ```
+
+- **WebSocket Info**: `GET /api/test/websocket`
+  Returns connection statistics and event information.
+
+- **WebSocket Health**: `GET /api/healthz/websocket`
+  Returns WebSocket service health and client statistics.
+
+**3. Health Checks:**
+
+- **General Health**: `GET /api/healthz`
+- **Cache Statistics**: `GET /api/healthz/cache`
+- **WebSocket Status**: `GET /api/healthz/websocket`
+
+All endpoints are documented in Swagger UI at `http://localhost:3001/api-docs`.
+
 ## 📖 Usage
 
 ### Adding a Bot
@@ -269,7 +310,9 @@ FreqHub is built with:
 - AES-256-CBC encryption for passwords
 - Valkey (Redis-compatible cache) - Optional, with in-memory fallback
 - ioredis (Valkey/Redis client)
+- Socket.io (WebSocket server)
 - Smart caching layer for bot states, balances, trades, and configurations
+- Event Bus with Valkey Pub/Sub for real-time event distribution
 
 ## 🤝 Contributing
 

@@ -17,6 +17,7 @@
  */
 
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import { env } from './config/env.js';
@@ -25,9 +26,11 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { createHealthRouter } from './routes/health.js';
 import { createBotsRouter } from './routes/bots.js';
 import { createProxyRouter } from './routes/proxy.js';
+import { createTestRouter } from './routes/test.js';
 import { getDatabase } from './db/database.js';
 import { swaggerSpec } from './config/swagger.js';
 import { valkeyService } from './services/valkey.service.js';
+import { websocketService } from './services/websocket.service.js';
 import { appLogger } from './utils/logger.js';
 
 // Initialize database
@@ -46,6 +49,10 @@ valkeyService.ping().then((connected) => {
 });
 
 const app = express();
+const httpServer = createServer(app);
+
+// Initialize WebSockets
+websocketService.initialize(httpServer);
 
 // Middleware
 app.use(cors({
@@ -93,6 +100,11 @@ app.use(`${basePath}/api/healthz`, createHealthRouter());
 app.use(`${basePath}/api/bots`, createBotsRouter());
 app.use(`${basePath}/api/bots`, createProxyRouter());
 
+// Test routes (only in development)
+if (env.NODE_ENV === 'development') {
+  app.use(`${basePath}/api/test`, createTestRouter());
+}
+
 // Error handling
 app.use(notFoundHandler);
 app.use(errorHandler);
@@ -100,7 +112,7 @@ app.use(errorHandler);
 // Start server
 const PORT = parseInt(env.PORT, 10);
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 FreqHub Backend running on http://localhost:${PORT}`);
   console.log(`📊 Environment: ${env.NODE_ENV}`);
   console.log(`💾 Database: ${env.DATABASE_PATH}`);

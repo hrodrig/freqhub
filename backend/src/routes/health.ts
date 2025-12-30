@@ -21,6 +21,7 @@ import { getDatabase } from '../db/database.js';
 import { cacheService } from '../services/cache.service.js';
 import { cacheStatsService } from '../services/cacheStats.service.js';
 import { valkeyService } from '../services/valkey.service.js';
+import { websocketService } from '../services/websocket.service.js';
 
 export function createHealthRouter(): Router {
   const router = express.Router();
@@ -121,6 +122,49 @@ export function createHealthRouter(): Router {
           },
           memory: cacheMemoryStats,
         },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/healthz/websocket:
+   *   get:
+   *     summary: WebSocket service health and statistics
+   *     description: Returns WebSocket connection status and client statistics
+   *     tags: [Health]
+   *     responses:
+   *       200:
+   *         description: WebSocket statistics
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 websocket:
+   *                   type: object
+   *                   properties:
+   *                     initialized:
+   *                       type: boolean
+   *                     connectedClients:
+   *                       type: number
+   *                     rooms:
+   *                       type: number
+   *                 timestamp:
+   *                   type: string
+   */
+  router.get('/websocket', (_req: Request, res: Response) => {
+    try {
+      const stats = websocketService.getStats();
+      res.json({
+        websocket: stats,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

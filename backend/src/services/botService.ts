@@ -24,6 +24,7 @@ import { botDBToBot, type Bot, type CreateBotRequest, type UpdateBotRequest } fr
 import { cacheService } from './cache.service.js';
 import { proxyRequest } from './proxyService.js';
 import { cacheStatsService } from './cacheStats.service.js';
+import { eventBusService } from './eventBus.service.js';
 import { appLogger } from '../utils/logger.js';
 
 /**
@@ -102,7 +103,16 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     botDB.updated_at
   );
 
-  return botDBToBot(botDB);
+  const bot = botDBToBot(botDB);
+  
+  // Publish event
+  eventBusService.publish({
+    type: 'bot_created',
+    botId: bot.id,
+    data: bot,
+  }).catch(() => {});
+
+  return bot;
 }
 
 /**
@@ -164,7 +174,18 @@ export async function updateBot(id: string, data: UpdateBotRequest): Promise<Bot
   stmt.run(...values);
 
   const updated = getBotWithCredentials(id);
-  return updated ? botDBToBot(updated) : null;
+  const bot = updated ? botDBToBot(updated) : null;
+
+  if (bot) {
+    // Publish event
+    eventBusService.publish({
+      type: 'bot_updated',
+      botId: bot.id,
+      data: bot,
+    }).catch(() => {});
+  }
+
+  return bot;
 }
 
 /**
@@ -174,6 +195,16 @@ export function deleteBot(id: string): boolean {
   const db = getDatabase();
   const stmt = db.prepare('DELETE FROM bots WHERE id = ?');
   const result = stmt.run(id);
+  
+  if (result.changes > 0) {
+    // Publish event
+    eventBusService.publish({
+      type: 'bot_deleted',
+      botId: id,
+      data: { id },
+    }).catch(() => {});
+  }
+
   return result.changes > 0;
 }
 
@@ -257,6 +288,13 @@ export async function getBotOpenTrades(botId: string): Promise<{ data: unknown; 
   // Cache for 5 seconds
   await cacheService.set(cacheKey, status, 5);
   
+  // Publish event for real-time updates
+  eventBusService.publish({
+    type: 'bot_open_trades_update',
+    botId,
+    data: status,
+  }).catch(() => {});
+  
   return { data: status, fromCache: false };
 }
 
@@ -282,6 +320,13 @@ export async function getBotPing(botId: string): Promise<{ data: unknown; fromCa
   
   // Cache for 10 seconds
   await cacheService.set(cacheKey, ping, 10);
+  
+  // Publish event for real-time updates
+  eventBusService.publish({
+    type: 'bot_ping_update',
+    botId,
+    data: ping,
+  }).catch(() => {});
   
   return { data: ping, fromCache: false };
 }
@@ -309,6 +354,13 @@ export async function getBotBalance(botId: string): Promise<{ data: unknown; fro
   // Cache for 10 seconds
   await cacheService.set(cacheKey, balance, 10);
   
+  // Publish event for real-time updates
+  eventBusService.publish({
+    type: 'bot_balance_update',
+    botId,
+    data: balance,
+  }).catch(() => {});
+  
   return { data: balance, fromCache: false };
 }
 
@@ -335,6 +387,13 @@ export async function getBotTrades(botId: string, limit?: number): Promise<{ dat
   
   // Cache for 5 seconds
   await cacheService.set(cacheKey, trades, 5);
+  
+  // Publish event for real-time updates
+  eventBusService.publish({
+    type: 'bot_trades_update',
+    botId,
+    data: trades,
+  }).catch(() => {});
   
   return { data: trades, fromCache: false };
 }
