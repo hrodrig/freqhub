@@ -54,13 +54,13 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **Event Bus**: Centralized event system with Valkey Pub/Sub for distributed event broadcasting
 - ✅ **WebSocket Support**: Real-time bidirectional communication for live updates to the frontend
 - ✅ **Real-Time Bot Updates**: Automatic event publishing when bot data changes (trades, balance, status)
+- ✅ **Automatic Polling Service**: Background service that keeps bot data fresh in cache, ensuring instant dashboard loads
 
 ### Planned Features
 
 - 🔄 **Trade Management**: Execute trades across multiple bots
 - 🔄 **Backtest Comparison**: Compare backtest results across strategies
 - 🔄 **Alert System**: Centralized alerts from all bot instances
-- 🔄 **Polling Service**: Background service to keep bot data fresh in cache
 
 ## 📋 Prerequisites
 
@@ -181,9 +181,16 @@ VALKEY_ENABLED=true
 VALKEY_HOST=localhost
 VALKEY_PORT=6379
 VALKEY_PASSWORD=  # Optional, leave empty for development
+
+# Polling Service Configuration (Optional)
+# Automatic background polling keeps bot data fresh in cache
+POLLING_ENABLED=true  # Set to false to disable automatic polling
+POLLING_INTERVAL=10000  # Polling interval in milliseconds (default: 10000 = 10 seconds)
 ```
 
 **Note**: If `VALKEY_ENABLED=false` or Valkey is unavailable, the system automatically falls back to in-memory caching. This ensures the application works even without Valkey, though with reduced performance for multi-bot scenarios.
+
+**Polling Service**: The polling service runs in the background and automatically refreshes bot data (ping, open trades, balance) to keep the cache fresh. This ensures that when users open the dashboard, data is already available. The service is smart and skips bots that already have fresh cache data, reducing unnecessary API calls. Set `POLLING_ENABLED=false` to disable it if you prefer on-demand caching only.
 
 ### Frontend Environment Variables
 
@@ -252,13 +259,72 @@ This connects to the WebSocket server and listens for real-time events. You can 
 - **WebSocket Health**: `GET /api/healthz/websocket`
   Returns WebSocket service health and client statistics.
 
-**3. Health Checks:**
+**3. Polling Service Testing:**
+
+- **Get Polling Status**: `GET /api/test/polling`
+- **Trigger Manual Poll**: `POST /api/test/polling` (forces immediate poll of all enabled bots)
+- **Polling Health**: `GET /api/healthz/polling`
+
+**4. Polling Service Testing:**
+
+- **Get Polling Status**: `GET /api/test/polling`
+- **Trigger Manual Poll**: `POST /api/test/polling` (forces immediate poll of all enabled bots)
+- **Polling Health**: `GET /api/healthz/polling`
+
+**5. Health Checks:**
 
 - **General Health**: `GET /api/healthz`
 - **Cache Statistics**: `GET /api/healthz/cache`
 - **WebSocket Status**: `GET /api/healthz/websocket`
+- **Polling Service**: `GET /api/healthz/polling`
 
 All endpoints are documented in Swagger UI at `http://localhost:3001/api-docs`.
+
+### Polling Service Validation
+
+To validate that the polling service is working correctly:
+
+**1. Check service status:**
+```bash
+curl http://localhost:3001/api/healthz/polling | jq
+```
+
+Expected: `"enabled": true` and `"running": true`, with recent timestamps in `lastPollTimes`.
+
+**2. Watch backend logs:**
+When the service starts, you should see:
+```
+Starting polling service (interval: 10000ms)
+```
+
+Every 10 seconds (or your configured interval), you'll see:
+```
+[DEBUG] Polling 2 enabled bot(s)
+[DEBUG] Polling bot bot-123
+```
+
+**3. Trigger manual poll:**
+```bash
+curl -X POST http://localhost:3001/api/test/polling
+```
+
+**4. Verify cache updates:**
+```bash
+# Check cache stats before
+curl http://localhost:3001/api/healthz/cache | jq '.cache.stats.hitRate'
+
+# Trigger poll
+curl -X POST http://localhost:3001/api/test/polling
+
+# Check cache stats after (wait 2 seconds)
+curl http://localhost:3001/api/healthz/cache | jq '.cache.stats.hitRate'
+```
+
+The hit rate should increase after polling. You can also use the automated test script:
+```bash
+cd backend
+./scripts/test-polling.sh
+```
 
 ## 📖 Usage
 

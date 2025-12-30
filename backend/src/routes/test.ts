@@ -19,6 +19,7 @@
 import express, { type Router, type Request, type Response } from 'express';
 import { eventBusService } from '../services/eventBus.service.js';
 import { websocketService } from '../services/websocket.service.js';
+import { pollingService } from '../services/polling.service.js';
 import { appLogger } from '../utils/logger.js';
 
 export function createTestRouter(): Router {
@@ -124,6 +125,64 @@ export function createTestRouter(): Router {
           'subscribed',
           'unsubscribed',
         ],
+      },
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  /**
+   * @swagger
+   * /api/test/polling:
+   *   post:
+   *     summary: Manually trigger polling (for testing)
+   *     description: Forces an immediate poll of all enabled bots, bypassing the normal interval
+   *     tags: [Testing]
+   *     responses:
+   *       200:
+   *         description: Polling triggered successfully
+   */
+  router.post('/polling', async (_req: Request, res: Response) => {
+    try {
+      await pollingService.pollNow();
+      const stats = pollingService.getStats();
+      res.json({
+        success: true,
+        message: 'Polling triggered successfully',
+        stats,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      appLogger.error('Error triggering polling:', error);
+      res.status(500).json({
+        error: 'Failed to trigger polling',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/test/polling:
+   *   get:
+   *     summary: Get polling service status (for testing)
+   *     description: Returns current polling service statistics and configuration
+   *     tags: [Testing]
+   *     responses:
+   *       200:
+   *         description: Polling service information
+   */
+  router.get('/polling', (_req: Request, res: Response) => {
+    const stats = pollingService.getStats();
+    res.json({
+      polling: stats,
+      info: {
+        description: 'Automatic polling service keeps bot data fresh in cache',
+        behavior: {
+          enabled: 'Only polls enabled bots',
+          smart: 'Skips bots with fresh cache data',
+          staggered: 'Staggers requests to avoid overwhelming APIs',
+          events: 'Publishes events when data changes',
+        },
       },
       timestamp: new Date().toISOString(),
     });

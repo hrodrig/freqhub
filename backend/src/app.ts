@@ -31,6 +31,7 @@ import { getDatabase } from './db/database.js';
 import { swaggerSpec } from './config/swagger.js';
 import { valkeyService } from './services/valkey.service.js';
 import { websocketService } from './services/websocket.service.js';
+import { pollingService } from './services/polling.service.js';
 import { appLogger } from './utils/logger.js';
 
 // Initialize database
@@ -127,6 +128,9 @@ httpServer.listen(PORT, () => {
     console.log(`   Bots: http://localhost:${PORT}/api/bots`);
     console.log(`   Swagger: http://localhost:${PORT}/api-docs`);
   }
+
+  // Start polling service
+  pollingService.start();
 });
 
 export default app;

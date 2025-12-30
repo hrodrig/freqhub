@@ -39,6 +39,9 @@ const envSchema = z.object({
   VALKEY_PORT: z.string().default('6379').transform((val) => parseInt(val, 10)),
   VALKEY_PASSWORD: z.string().optional(),
   VALKEY_ENABLED: z.string().default('false').transform((val) => val === 'true'),
+  // Polling service configuration
+  POLLING_ENABLED: z.string().default('true').transform((val) => val === 'true'),
+  POLLING_INTERVAL: z.string().default('10000').transform((val) => parseInt(val, 10)), // milliseconds
 });
 
 const parsed = envSchema.safeParse(process.env);
