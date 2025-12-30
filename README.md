@@ -55,6 +55,7 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **WebSocket Support**: Real-time bidirectional communication for live updates to the frontend
 - ✅ **Real-Time Bot Updates**: Automatic event publishing when bot data changes (trades, balance, status)
 - ✅ **Automatic Polling Service**: Background service that keeps bot data fresh in cache, ensuring instant dashboard loads
+- ✅ **Rate Limiting**: Protects Freqtrade APIs from being overwhelmed with configurable limits per bot
 
 ### Planned Features
 
@@ -186,11 +187,19 @@ VALKEY_PASSWORD=  # Optional, leave empty for development
 # Automatic background polling keeps bot data fresh in cache
 POLLING_ENABLED=true  # Set to false to disable automatic polling
 POLLING_INTERVAL=10000  # Polling interval in milliseconds (default: 10000 = 10 seconds)
+
+# Rate Limiting Configuration (Optional)
+# Protects Freqtrade APIs from being overwhelmed
+RATE_LIMIT_ENABLED=true  # Set to false to disable rate limiting
+RATE_LIMIT_DEFAULT=60  # Default requests per window (default: 60)
+RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
 ```
 
 **Note**: If `VALKEY_ENABLED=false` or Valkey is unavailable, the system automatically falls back to in-memory caching. This ensures the application works even without Valkey, though with reduced performance for multi-bot scenarios.
 
 **Polling Service**: The polling service runs in the background and automatically refreshes bot data (ping, open trades, balance) to keep the cache fresh. This ensures that when users open the dashboard, data is already available. The service is smart and skips bots that already have fresh cache data, reducing unnecessary API calls. Set `POLLING_ENABLED=false` to disable it if you prefer on-demand caching only.
+
+**Rate Limiting**: Protects Freqtrade APIs from being overwhelmed by too many requests. Each bot has its own rate limit counter (default: 60 requests per 60 seconds). When the limit is exceeded, requests return HTTP 429 with `Retry-After` header. All responses include `X-RateLimit-*` headers for monitoring. The service uses Valkey for distributed rate limiting (with in-memory fallback). Set `RATE_LIMIT_ENABLED=false` to disable it.
 
 ### Frontend Environment Variables
 
@@ -265,9 +274,11 @@ This connects to the WebSocket server and listens for real-time events. You can 
 - **Trigger Manual Poll**: `POST /api/test/polling` (forces immediate poll of all enabled bots)
 - **Polling Health**: `GET /api/healthz/polling`
 
-**4. Polling Service Testing:**
+**4. Rate Limiting Testing:**
 
-- **Get Polling Status**: `GET /api/test/polling`
+- **Get Rate Limit Status**: `GET /api/test/ratelimit`
+- **Reset Rate Limit**: `POST /api/test/ratelimit/reset` (with `{"botId": "bot-123"}`)
+- **Rate Limit Health**: `GET /api/healthz/ratelimit`
 - **Trigger Manual Poll**: `POST /api/test/polling` (forces immediate poll of all enabled bots)
 - **Polling Health**: `GET /api/healthz/polling`
 
@@ -277,6 +288,7 @@ This connects to the WebSocket server and listens for real-time events. You can 
 - **Cache Statistics**: `GET /api/healthz/cache`
 - **WebSocket Status**: `GET /api/healthz/websocket`
 - **Polling Service**: `GET /api/healthz/polling`
+- **Rate Limiting**: `GET /api/healthz/ratelimit`
 
 All endpoints are documented in Swagger UI at `http://localhost:3001/api-docs`.
 

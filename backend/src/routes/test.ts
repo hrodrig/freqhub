@@ -20,6 +20,7 @@ import express, { type Router, type Request, type Response } from 'express';
 import { eventBusService } from '../services/eventBus.service.js';
 import { websocketService } from '../services/websocket.service.js';
 import { pollingService } from '../services/polling.service.js';
+import { rateLimitService } from '../services/rateLimit.service.js';
 import { appLogger } from '../utils/logger.js';
 
 export function createTestRouter(): Router {
@@ -74,7 +75,7 @@ export function createTestRouter(): Router {
 
       appLogger.info(`Test event published: ${type}${botId ? ` (bot: ${botId})` : ''}`);
 
-      res.json({
+      return res.json({
         success: true,
         message: 'Event published successfully',
         event: {
@@ -89,7 +90,7 @@ export function createTestRouter(): Router {
       });
     } catch (error) {
       appLogger.error('Error publishing test event:', error);
-      res.status(500).json({
+      return res.status(500).json({
         error: 'Failed to publish event',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
@@ -186,6 +187,89 @@ export function createTestRouter(): Router {
       },
       timestamp: new Date().toISOString(),
     });
+  });
+
+  /**
+   * @swagger
+   * /api/test/ratelimit:
+   *   get:
+   *     summary: Get rate limit status (for testing)
+   *     description: Returns current rate limit statistics for all bots
+   *     tags: [Testing]
+   *     responses:
+   *       200:
+   *         description: Rate limit information
+   */
+  router.get('/ratelimit', async (_req: Request, res: Response) => {
+    const stats = await rateLimitService.getAllStats();
+    const { env } = await import('../config/env.js');
+    res.json({
+      ratelimit: {
+        enabled: rateLimitService.isEnabled(),
+        defaultLimit: env.RATE_LIMIT_DEFAULT,
+        defaultWindow: env.RATE_LIMIT_WINDOW,
+        stats,
+      },
+      info: {
+        description: 'Rate limiting protects Freqtrade APIs from being overwhelmed',
+        behavior: {
+          perBot: 'Each bot has its own rate limit counter',
+          window: 'Sliding window resets after the configured time',
+          headers: 'All responses include X-RateLimit-* headers',
+          fallback: 'Uses in-memory storage if Valkey is unavailable',
+        },
+      },
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  /**
+   * @swagger
+   * /api/test/ratelimit/reset:
+   *   post:
+   *     summary: Reset rate limit for a bot (for testing)
+   *     description: Clears the rate limit counter for a specific bot
+   *     tags: [Testing]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - botId
+   *             properties:
+   *               botId:
+   *                 type: string
+   *                 example: "bot-123"
+   *     responses:
+   *       200:
+   *         description: Rate limit reset successfully
+   */
+  router.post('/ratelimit/reset', async (req: Request, res: Response) => {
+    try {
+      const { botId } = req.body;
+      if (!botId || typeof botId !== 'string') {
+        return res.status(400).json({
+          error: 'Missing or invalid "botId" field',
+        });
+      }
+
+      await rateLimitService.reset(botId);
+      appLogger.info(`Rate limit reset for bot: ${botId}`);
+
+      return res.json({
+        success: true,
+        message: `Rate limit reset for bot ${botId}`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      appLogger.error('Error resetting rate limit:', error);
+      return res.status(500).json({
+        error: 'Failed to reset rate limit',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   });
 
   return router;

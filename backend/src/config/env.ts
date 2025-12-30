@@ -42,6 +42,10 @@ const envSchema = z.object({
   // Polling service configuration
   POLLING_ENABLED: z.string().default('true').transform((val) => val === 'true'),
   POLLING_INTERVAL: z.string().default('10000').transform((val) => parseInt(val, 10)), // milliseconds
+  // Rate limiting configuration
+  RATE_LIMIT_ENABLED: z.string().default('true').transform((val) => val === 'true'),
+  RATE_LIMIT_DEFAULT: z.string().default('60').transform((val) => parseInt(val, 10)), // requests per window
+  RATE_LIMIT_WINDOW: z.string().default('60').transform((val) => parseInt(val, 10)), // seconds
 });
 
 const parsed = envSchema.safeParse(process.env);

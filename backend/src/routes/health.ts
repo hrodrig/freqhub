@@ -23,6 +23,7 @@ import { cacheStatsService } from '../services/cacheStats.service.js';
 import { valkeyService } from '../services/valkey.service.js';
 import { websocketService } from '../services/websocket.service.js';
 import { pollingService } from '../services/polling.service.js';
+import { rateLimitService } from '../services/rateLimit.service.js';
 
 export function createHealthRouter(): Router {
   const router = express.Router();
@@ -211,6 +212,55 @@ export function createHealthRouter(): Router {
       const stats = pollingService.getStats();
       res.json({
         polling: stats,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/healthz/ratelimit:
+   *   get:
+   *     summary: Rate limiting service health and statistics
+   *     description: Returns rate limiting service status and current limits for all bots
+   *     tags: [Health]
+   *     responses:
+   *       200:
+   *         description: Rate limiting statistics
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 ratelimit:
+   *                   type: object
+   *                   properties:
+   *                     enabled:
+   *                       type: boolean
+   *                     defaultLimit:
+   *                       type: number
+   *                     defaultWindow:
+   *                       type: number
+   *                     stats:
+   *                       type: array
+   */
+  router.get('/ratelimit', async (_req: Request, res: Response) => {
+    try {
+      const stats = await rateLimitService.getAllStats();
+      const { env } = await import('../config/env.js');
+      res.json({
+        ratelimit: {
+          enabled: rateLimitService.isEnabled(),
+          defaultLimit: env.RATE_LIMIT_DEFAULT,
+          defaultWindow: env.RATE_LIMIT_WINDOW,
+          stats,
+        },
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

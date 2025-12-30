@@ -33,7 +33,6 @@ export interface FreqHubEvent {
  */
 class EventBusService extends EventEmitter {
   private readonly MAIN_CHANNEL = 'freqhub:events';
-  private isSubscribed = false;
 
   constructor() {
     super();
@@ -52,7 +51,6 @@ class EventBusService extends EventEmitter {
         appLogger.error(`EventBus: Failed to subscribe to ${this.MAIN_CHANNEL}:`, err);
         return;
       }
-      this.isSubscribed = true;
       appLogger.info(`EventBus: Subscribed to Valkey channel ${this.MAIN_CHANNEL}`);
     });
 

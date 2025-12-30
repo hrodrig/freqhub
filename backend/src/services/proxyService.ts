@@ -19,6 +19,8 @@
 import axios, { type AxiosInstance } from 'axios';
 import { getBotWithCredentials, updateBotToken, invalidateBotCache } from './botService.js';
 import { decryptPassword } from './encryptionService.js';
+import { rateLimitService } from './rateLimit.service.js';
+import { env } from '../config/env.js';
 
 interface FreqtradeLoginResponse {
   access_token: string;
@@ -118,6 +120,22 @@ export async function proxyRequest(
 
   if (!bot.is_enabled) {
     throw new Error('Bot is disabled');
+  }
+
+  // Check rate limit
+  const rateLimit = await rateLimitService.checkLimit(
+    botId,
+    env.RATE_LIMIT_DEFAULT,
+    env.RATE_LIMIT_WINDOW
+  );
+
+  if (!rateLimit.allowed) {
+    const error = new Error(
+      `Rate limit exceeded: ${rateLimit.remaining}/${rateLimit.limit} requests remaining. Retry after ${rateLimit.retryAfter}s`
+    ) as Error & { statusCode?: number; retryAfter?: number };
+    error.statusCode = 429;
+    error.retryAfter = rateLimit.retryAfter;
+    throw error;
   }
 
   // Check if we have a valid token

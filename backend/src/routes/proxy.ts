@@ -20,6 +20,40 @@ import express, { type Router, type Request, type Response } from 'express';
 import { proxyRequest, testBotConnection } from '../services/proxyService.js';
 import { getBotWithCredentials, getBotOpenTrades, getBotPing, getBotBalance, getBotTrades, getBotState } from '../services/botService.js';
 import { decryptPassword } from '../services/encryptionService.js';
+import { rateLimitService } from '../services/rateLimit.service.js';
+import { env } from '../config/env.js';
+
+/**
+ * Helper function to check rate limit and set headers
+ */
+async function checkRateLimit(
+  botId: string,
+  res: Response
+): Promise<{ allowed: boolean; retryAfter?: number }> {
+  const rateLimit = await rateLimitService.checkLimit(
+    botId,
+    env.RATE_LIMIT_DEFAULT,
+    env.RATE_LIMIT_WINDOW
+  );
+
+  // Add rate limit headers to response
+  res.setHeader('X-RateLimit-Limit', rateLimit.limit.toString());
+  res.setHeader('X-RateLimit-Remaining', rateLimit.remaining.toString());
+  res.setHeader('X-RateLimit-Reset', rateLimit.reset.toString());
+
+  if (!rateLimit.allowed) {
+    const retryAfter = rateLimit.retryAfter || env.RATE_LIMIT_WINDOW;
+    res.setHeader('Retry-After', retryAfter.toString());
+    res.status(429).json({
+      status: 'error',
+      message: `Rate limit exceeded: ${rateLimit.remaining}/${rateLimit.limit} requests remaining. Retry after ${retryAfter}s`,
+      retryAfter,
+    });
+    return { allowed: false, retryAfter };
+  }
+
+  return { allowed: true };
+}
 
 export function createProxyRouter(): Router {
   const router = express.Router();
@@ -306,6 +340,12 @@ export function createProxyRouter(): Router {
    */
   router.get('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
+      // Check rate limit before processing
+      const rateLimitCheck = await checkRateLimit(req.params.id, res);
+      if (!rateLimitCheck.allowed) {
+        return; // Response already sent
+      }
+
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
       const queryString = req.url.includes('?') ? req.url.split('?')[1] : '';
@@ -430,13 +470,30 @@ export function createProxyRouter(): Router {
    */
   router.post('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
+      // Check rate limit before processing
+      const rateLimitCheck = await checkRateLimit(req.params.id, res);
+      if (!rateLimitCheck.allowed) {
+        return; // Response already sent
+      }
+
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
 
       const data = await proxyRequest(req.params.id, 'POST', fullPath, req.body);
-      res.json(data);
+      return res.json(data);
     } catch (error) {
-      res.status(500).json({
+      // Handle rate limit errors
+      if (error instanceof Error && 'statusCode' in error && (error as any).statusCode === 429) {
+        const retryAfter = (error as any).retryAfter || env.RATE_LIMIT_WINDOW;
+        res.setHeader('Retry-After', retryAfter.toString());
+        return res.status(429).json({
+          status: 'error',
+          message: error.message,
+          retryAfter,
+        });
+      }
+
+      return res.status(500).json({
         status: 'error',
         message: error instanceof Error ? error.message : 'Proxy request failed',
       });
@@ -486,13 +543,30 @@ export function createProxyRouter(): Router {
    */
   router.put('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
+      // Check rate limit before processing
+      const rateLimitCheck = await checkRateLimit(req.params.id, res);
+      if (!rateLimitCheck.allowed) {
+        return; // Response already sent
+      }
+
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
 
       const data = await proxyRequest(req.params.id, 'PUT', fullPath, req.body);
-      res.json(data);
+      return res.json(data);
     } catch (error) {
-      res.status(500).json({
+      // Handle rate limit errors
+      if (error instanceof Error && 'statusCode' in error && (error as any).statusCode === 429) {
+        const retryAfter = (error as any).retryAfter || env.RATE_LIMIT_WINDOW;
+        res.setHeader('Retry-After', retryAfter.toString());
+        return res.status(429).json({
+          status: 'error',
+          message: error.message,
+          retryAfter,
+        });
+      }
+
+      return res.status(500).json({
         status: 'error',
         message: error instanceof Error ? error.message : 'Proxy request failed',
       });
@@ -536,13 +610,30 @@ export function createProxyRouter(): Router {
    */
   router.delete('/:id/proxy/*', async (req: Request, res: Response) => {
     try {
+      // Check rate limit before processing
+      const rateLimitCheck = await checkRateLimit(req.params.id, res);
+      if (!rateLimitCheck.allowed) {
+        return; // Response already sent
+      }
+
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
 
       const data = await proxyRequest(req.params.id, 'DELETE', fullPath);
-      res.json(data);
+      return res.json(data);
     } catch (error) {
-      res.status(500).json({
+      // Handle rate limit errors
+      if (error instanceof Error && 'statusCode' in error && (error as any).statusCode === 429) {
+        const retryAfter = (error as any).retryAfter || env.RATE_LIMIT_WINDOW;
+        res.setHeader('Retry-After', retryAfter.toString());
+        return res.status(429).json({
+          status: 'error',
+          message: error.message,
+          retryAfter,
+        });
+      }
+
+      return res.status(500).json({
         status: 'error',
         message: error instanceof Error ? error.message : 'Proxy request failed',
       });
