@@ -32,12 +32,21 @@ export function getAllUsers(): User[] {
 }
 
 /**
- * Get user by ID
+ * Get user by ID (returns User model)
  */
 export function getUserById(id: string): User | null {
   const db = getDatabase();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserDB | undefined;
   return user ? userDBToUser(user) : null;
+}
+
+/**
+ * Get user by ID (returns UserDB for internal use)
+ */
+export function getUserByIdDB(id: string): UserDB | null {
+  const db = getDatabase();
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserDB | undefined;
+  return user || null;
 }
 
 /**
@@ -70,7 +79,7 @@ export function createUser(request: CreateUserRequest, createdBy: string | null 
     id,
     username: request.username,
     email: request.email,
-    password_hash: '', // Will be set by caller after hashing
+    password_hash: request.password, // Caller should provide hashed password
     role: request.role || 'user',
     is_active: request.isActive !== false ? 1 : 0,
     totp_secret: null,

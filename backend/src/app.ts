@@ -27,6 +27,7 @@ import { createHealthRouter } from './routes/health.js';
 import { createBotsRouter } from './routes/bots.js';
 import { createProxyRouter } from './routes/proxy.js';
 import { createTestRouter } from './routes/test.js';
+import { createAuthRouter } from './routes/auth.js';
 import { getDatabase } from './db/database.js';
 import { swaggerSpec } from './config/swagger.js';
 import { valkeyService } from './services/valkey.service.js';
@@ -99,6 +100,7 @@ app.get(`${basePath}/api-docs.json`, (_req, res) => {
 
 // Routes with configurable base path
 app.use(`${basePath}/api/healthz`, createHealthRouter());
+app.use(`${basePath}/api/auth`, createAuthRouter());
 app.use(`${basePath}/api/bots`, createBotsRouter());
 app.use(`${basePath}/api/bots`, createProxyRouter());
 
