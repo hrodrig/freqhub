@@ -60,13 +60,17 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **Bot Notes**: Add custom notes to each bot for better organization and documentation
 - ✅ **Modern Frontend UI**: Complete React-based dashboard with real-time updates, bot management, and detailed views
 - ✅ **User Management**: Database schema for users, roles, and bot ownership (Phase 1 complete)
-- ✅ **Audit Logging**: Comprehensive audit log system for tracking all user actions (Phase 1 complete)
+- ✅ **Authentication**: JWT-based authentication with secure password hashing (Phase 2 complete)
+- ✅ **Authorization**: Role-based access control (RBAC) with bot ownership enforcement (Phase 3 complete)
+- ✅ **Audit Logging**: Comprehensive audit log system for tracking all user actions (Phase 4 complete)
 - ✅ **Automatic Superadmin**: System automatically creates default superadmin on first startup
+- ✅ **Protected Routes**: All bot management and proxy routes protected with authentication and authorization
+- ✅ **Audit Middleware**: Automatic audit logging for all actions with old/new value tracking
 
 ### Planned Features
 
-- 🔄 **Authentication & Authorization**: JWT-based authentication with role-based access control (RBAC) - Phase 2
-- 🔄 **User Roles**: Superadmin, Auditor, and Normal User roles with different permission levels - Phase 2
+- 🔄 **Advanced Security**: 2FA (TOTP), QR Code authentication, session management
+- 🔄 **User Management UI**: Frontend interface for user CRUD operations
 - 🔄 **Trade Management**: Execute trades across multiple bots
 - 🔄 **Backtest Comparison**: Compare backtest results across strategies
 - 🔄 **Alert System**: Centralized alerts from all bot instances
@@ -233,7 +237,7 @@ VALKEY_PORT=6379
 
 ## 🔐 Authentication & Authorization (AAA)
 
-FreqHub includes a comprehensive Authentication, Authorization, and Audit (AAA) system. Currently, **Phase 1** (Database and Models) is complete.
+FreqHub includes a comprehensive Authentication, Authorization, and Audit (AAA) system. **Phases 1-4** are complete and production-ready.
 
 ### Phase 1: Database & Models ✅
 
@@ -241,6 +245,55 @@ FreqHub includes a comprehensive Authentication, Authorization, and Audit (AAA) 
 - **Bot Ownership**: Track which users own which bots
 - **Audit Logging**: Comprehensive audit log system for tracking all actions
 - **Automatic Superadmin**: System automatically creates a default superadmin on first startup
+
+### Phase 2: Authentication ✅
+
+- **JWT Tokens**: Stateless authentication using JSON Web Tokens
+- **Password Hashing**: Secure password storage using bcrypt
+- **Login/Logout**: RESTful endpoints for user authentication
+- **Session Management**: Token-based session handling with configurable expiration
+- **Password Change**: Secure password change endpoint
+
+**API Endpoints:**
+- `POST /api/auth/login` - Authenticate user and receive JWT token
+- `POST /api/auth/logout` - Invalidate current session (client-side token removal)
+- `GET /api/auth/me` - Get current user information
+- `POST /api/auth/change-password` - Change user password
+
+### Phase 3: Authorization (RBAC) ✅
+
+- **Role-Based Access Control**: Three roles with different permission levels
+  - **Superadmin**: Full access to everything
+  - **Auditor**: Read-only access (no sensitive credentials)
+  - **User**: Access only to owned bots
+- **Bot Ownership**: Users can only manage bots assigned to them
+- **Protected Routes**: All bot management and proxy routes require authentication
+- **Authorization Middleware**: Automatic permission checking based on roles and ownership
+
+**Protected Endpoints:**
+- All `/api/bots/*` routes require authentication
+- Bot creation assigns ownership to the creator
+- Bot updates/deletes require ownership or superadmin role
+- Bot viewing respects ownership (users see only their bots, superadmin/auditor see all)
+
+### Phase 4: Audit ✅
+
+- **Comprehensive Logging**: All user actions are logged automatically
+- **Action Categories**: Actions are categorized (data_change, data_access, system_action, auth)
+- **Change Tracking**: For updates, old/new values and changed fields are captured
+- **Sensitive Data Sanitization**: Passwords, tokens, and API keys are automatically redacted
+- **Audit Log Access**: Access to audit logs is itself audited (with meta-audit flag to prevent loops)
+- **Resource History**: View complete history of changes for any resource
+
+**Audit Endpoints:**
+- `GET /api/audit` - Query audit logs with filters (superadmin/auditor only)
+- `GET /api/audit/resource/:resourceType/:resourceId` - Get history for a specific resource
+
+**What Gets Audited:**
+- All bot operations (create, update, delete, start, stop, pause)
+- All user operations (login, logout, password changes)
+- All data access (viewing bots, configurations, audit logs)
+- All system actions (reload config, refresh, etc.)
 
 **Default Superadmin Credentials:**
 When the system starts for the first time (or if no superadmin exists), it automatically creates a superadmin user with:
@@ -269,9 +322,9 @@ When the system starts for the first time (or if no superadmin exists), it autom
 
 ### Planned Phases
 
-- **Phase 2**: JWT-based authentication, login/logout endpoints, password hashing
-- **Phase 3**: Role-based access control (RBAC), bot ownership enforcement
-- **Phase 4**: Advanced security (2FA, QR login, session management)
+- **Phase 5**: User Management UI (CRUD operations for users, assign bots to users)
+- **Phase 6**: Frontend Integration (login page, protected routes, audit log viewer)
+- **Phase 7**: Advanced Security (2FA with TOTP, QR Code authentication, session management)
 
 ## ⚙️ Configuration
 
@@ -309,6 +362,10 @@ RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
 # Customize the default superadmin username and email
 DEFAULT_ADMIN_USERNAME=freqhub  # Default: freqhub
 DEFAULT_ADMIN_EMAIL=admin@freqhub.local  # Default: admin@freqhub.local
+
+# JWT Authentication Configuration
+JWT_SECRET=change-this-jwt-secret-in-production-min-32-chars
+JWT_EXPIRES_IN=24h  # Token expiration time (e.g., 24h, 7d, 30d)
 ```
 
 **Note**: If `VALKEY_ENABLED=false` or Valkey is unavailable, the system automatically falls back to in-memory caching. This ensures the application works even without Valkey, though with reduced performance for multi-bot scenarios.
@@ -571,6 +628,7 @@ FreqHub is built with:
 - SQLite (with migration path to Postgres/MySQL)
 - AES-256-CBC encryption for passwords
 - bcrypt for password hashing (user authentication)
+- jsonwebtoken for JWT-based authentication
 - Valkey (Redis-compatible cache) - Optional, with in-memory fallback
 - ioredis (Valkey/Redis client)
 - Socket.io (WebSocket server)
@@ -578,7 +636,7 @@ FreqHub is built with:
 - Event Bus with Valkey Pub/Sub for real-time event distribution
 - Automatic polling service for proactive data freshness
 - Online/offline detection with real-time event publishing
-- User management and audit logging system (Phase 1 complete)
+- Complete AAA system (Authentication, Authorization, Audit) - Phases 1-4 complete
 
 ## 🤝 Contributing
 

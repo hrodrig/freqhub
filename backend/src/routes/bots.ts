@@ -27,6 +27,10 @@ import {
 } from '../services/botService.js';
 import { testBotConnection } from '../services/proxyService.js';
 import type { CreateBotRequest, UpdateBotRequest } from '../models/Bot.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { requireBotOwnershipOrSuperadmin, requireBotViewAccess } from '../middleware/authorize.middleware.js';
+import { getBotsOwnedByUser } from '../services/botOwnershipService.js';
+import { assignBotOwnership } from '../services/botOwnershipService.js';
 
 const createBotSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -51,13 +55,18 @@ const updateBotSchema = z.object({
 export function createBotsRouter(): Router {
   const router = express.Router();
 
+  // All routes require authentication
+  router.use(authenticate);
+
   /**
    * @swagger
    * /api/bots:
    *   get:
    *     summary: List all bots
-   *     description: Returns a list of all configured bots
+   *     description: Returns a list of bots. Superadmin and Auditor see all bots, regular users see only their own bots.
    *     tags: [Bots]
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: List of bots
@@ -80,12 +89,27 @@ export function createBotsRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/', async (_req: Request, res: Response) => {
+  router.get('/', async (req: Request, res: Response) => {
     try {
-      const bots = getAllBots();
-      res.json({ status: 'success', data: bots });
+      if (!req.user) {
+        return res.status(401).json({ status: 'error', message: 'Unauthorized' });
+      }
+
+      let bots = getAllBots();
+
+      // Filter bots based on user role
+      if (req.user.role === 'superadmin' || req.user.role === 'auditor') {
+        // Superadmin and Auditor can see all bots
+        // No filtering needed
+      } else {
+        // Regular users can only see their own bots
+        const ownedBotIds = getBotsOwnedByUser(req.user.id);
+        bots = bots.filter(bot => ownedBotIds.includes(bot.id));
+      }
+
+      return res.json({ status: 'success', data: bots });
     } catch (error) {
-      res.status(500).json({
+      return res.status(500).json({
         status: 'error',
         message: error instanceof Error ? error.message : 'Failed to get bots',
       });
@@ -133,7 +157,7 @@ export function createBotsRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/:id', async (req: Request, res: Response) => {
+  router.get('/:id', requireBotViewAccess, async (req: Request, res: Response) => {
     try {
       const bot = getBotById(req.params.id);
       if (!bot) {
@@ -209,6 +233,12 @@ export function createBotsRouter(): Router {
       }
 
       const bot = await createBot(validated as CreateBotRequest);
+      
+      // Assign ownership to the user who created it (unless superadmin)
+      if (req.user && req.user.role !== 'superadmin') {
+        assignBotOwnership(bot.id, req.user.id, req.user.id);
+      }
+      
       return res.status(201).json({ status: 'success', data: bot });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -278,7 +308,7 @@ export function createBotsRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.put('/:id', async (req: Request, res: Response) => {
+  router.put('/:id', requireBotOwnershipOrSuperadmin, async (req: Request, res: Response) => {
     try {
       const validated = updateBotSchema.parse(req.body);
       const bot = await updateBot(req.params.id, validated as UpdateBotRequest);
@@ -346,7 +376,7 @@ export function createBotsRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.delete('/:id', async (req: Request, res: Response) => {
+  router.delete('/:id', requireBotOwnershipOrSuperadmin, async (req: Request, res: Response) => {
     try {
       const deleted = deleteBot(req.params.id);
       if (!deleted) {

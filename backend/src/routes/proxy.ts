@@ -22,6 +22,8 @@ import { getBotWithCredentials, getBotOpenTrades, getBotPing, getBotBalance, get
 import { decryptPassword } from '../services/encryptionService.js';
 import { rateLimitService } from '../services/rateLimit.service.js';
 import { env } from '../config/env.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { requireBotViewAccess, requireBotOwnershipOrSuperadmin } from '../middleware/authorize.middleware.js';
 
 /**
  * Helper function to check rate limit and set headers
@@ -57,6 +59,9 @@ async function checkRateLimit(
 
 export function createProxyRouter(): Router {
   const router = express.Router();
+
+  // All routes require authentication
+  router.use(authenticate);
 
   /**
    * @swagger
@@ -106,7 +111,7 @@ export function createProxyRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post('/:id/test', async (req: Request, res: Response) => {
+  router.post('/:id/test', requireBotViewAccess, async (req: Request, res: Response) => {
     try {
       const bot = getBotWithCredentials(req.params.id);
       if (!bot) {
@@ -970,7 +975,7 @@ export function createProxyRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.get('/:id/proxy/*', async (req: Request, res: Response) => {
+  router.get('/:id/proxy/*', requireBotViewAccess, async (req: Request, res: Response) => {
     try {
       // Check rate limit before processing
       const rateLimitCheck = await checkRateLimit(req.params.id, res);
@@ -1105,7 +1110,7 @@ export function createProxyRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post('/:id/proxy/*', async (req: Request, res: Response) => {
+  router.post('/:id/proxy/*', requireBotOwnershipOrSuperadmin, async (req: Request, res: Response) => {
     try {
       // Check rate limit before processing
       const rateLimitCheck = await checkRateLimit(req.params.id, res);
@@ -1179,7 +1184,7 @@ export function createProxyRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.put('/:id/proxy/*', async (req: Request, res: Response) => {
+  router.put('/:id/proxy/*', requireBotOwnershipOrSuperadmin, async (req: Request, res: Response) => {
     try {
       // Check rate limit before processing
       const rateLimitCheck = await checkRateLimit(req.params.id, res);
@@ -1247,7 +1252,7 @@ export function createProxyRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.delete('/:id/proxy/*', async (req: Request, res: Response) => {
+  router.delete('/:id/proxy/*', requireBotOwnershipOrSuperadmin, async (req: Request, res: Response) => {
     try {
       // Check rate limit before processing
       const rateLimitCheck = await checkRateLimit(req.params.id, res);
