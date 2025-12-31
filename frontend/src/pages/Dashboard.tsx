@@ -21,7 +21,7 @@ import { useBotStore } from '../stores/botStore.js';
 import { proxyApi } from '../services/api/endpoints.js';
 import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
 import { Link } from 'react-router-dom';
-import { Bot, Activity, DollarSign, CheckCircle2, XCircle, Loader2, Calendar, Play, Square, Pause, RotateCcw, RefreshCw, Settings } from 'lucide-react';
+import { Bot, Activity, CheckCircle2, XCircle, Loader2, Calendar, Play, Square, Pause, RotateCcw, RefreshCw, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 
 type TimePeriod = '24h' | '7d' | '30d' | 'all';

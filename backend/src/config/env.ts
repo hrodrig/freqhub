@@ -26,6 +26,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_PATH: z.string().default('./data/freqhub.db'),
   ENCRYPTION_KEY: z.string().min(32, 'Encryption key must be at least 32 characters'),
+  JWT_SECRET: z.string().min(32, 'JWT secret must be at least 32 characters').default('change-this-jwt-secret-in-production-min-32-chars'),
+  JWT_EXPIRES_IN: z.string().default('24h'), // Token expiration (e.g., '24h', '7d', '30d')
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
   BASE_PATH: z.string().default('').transform((val) => {
