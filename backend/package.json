@@ -25,7 +25,9 @@
   "author": "",
   "license": "GPL-3.0",
   "dependencies": {
+    "@types/bcrypt": "^6.0.0",
     "axios": "^1.7.9",
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

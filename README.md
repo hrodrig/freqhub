@@ -59,9 +59,14 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **Rate Limiting**: Protects Freqtrade APIs from being overwhelmed with configurable limits per bot
 - ✅ **Bot Notes**: Add custom notes to each bot for better organization and documentation
 - ✅ **Modern Frontend UI**: Complete React-based dashboard with real-time updates, bot management, and detailed views
+- ✅ **User Management**: Database schema for users, roles, and bot ownership (Phase 1 complete)
+- ✅ **Audit Logging**: Comprehensive audit log system for tracking all user actions (Phase 1 complete)
+- ✅ **Automatic Superadmin**: System automatically creates default superadmin on first startup
 
 ### Planned Features
 
+- 🔄 **Authentication & Authorization**: JWT-based authentication with role-based access control (RBAC) - Phase 2
+- 🔄 **User Roles**: Superadmin, Auditor, and Normal User roles with different permission levels - Phase 2
 - 🔄 **Trade Management**: Execute trades across multiple bots
 - 🔄 **Backtest Comparison**: Compare backtest results across strategies
 - 🔄 **Alert System**: Centralized alerts from all bot instances
@@ -226,6 +231,48 @@ VALKEY_PORT=6379
 - **Session storage**: User session management with configurable TTL
 - **Automatic fallback**: Seamlessly falls back to in-memory cache if Valkey is unavailable
 
+## 🔐 Authentication & Authorization (AAA)
+
+FreqHub includes a comprehensive Authentication, Authorization, and Audit (AAA) system. Currently, **Phase 1** (Database and Models) is complete.
+
+### Phase 1: Database & Models ✅
+
+- **User Management**: Database schema for users with roles (superadmin, auditor, user)
+- **Bot Ownership**: Track which users own which bots
+- **Audit Logging**: Comprehensive audit log system for tracking all actions
+- **Automatic Superadmin**: System automatically creates a default superadmin on first startup
+
+**Default Superadmin Credentials:**
+When the system starts for the first time (or if no superadmin exists), it automatically creates a superadmin user with:
+- **Username**: `freqhub` (configurable via `DEFAULT_ADMIN_USERNAME` env var)
+- **Email**: `admin@freqhub.local` (configurable via `DEFAULT_ADMIN_EMAIL` env var)
+- **Password**: Randomly generated secure password (16+ characters)
+
+**⚠️ Important**: The superadmin credentials are displayed **ONCE** in the server logs on first startup. Make sure to:
+1. Copy the credentials immediately
+2. Change the password after first login
+3. Store the credentials securely
+
+**Example log output:**
+```
+================================================================================
+⚠️  SUPERADMIN CREATED AUTOMATICALLY
+================================================================================
+👤 Username: freqhub
+🔑 Password: [randomly generated]
+📧 Email: admin@freqhub.local
+================================================================================
+⚠️  IMPORTANT: Change the password after the first login
+⚠️  These credentials are only shown ONCE
+================================================================================
+```
+
+### Planned Phases
+
+- **Phase 2**: JWT-based authentication, login/logout endpoints, password hashing
+- **Phase 3**: Role-based access control (RBAC), bot ownership enforcement
+- **Phase 4**: Advanced security (2FA, QR login, session management)
+
 ## ⚙️ Configuration
 
 ### Backend Environment Variables
@@ -257,6 +304,11 @@ POLLING_INTERVAL=10000  # Polling interval in milliseconds (default: 10000 = 10 
 RATE_LIMIT_ENABLED=true  # Set to false to disable rate limiting
 RATE_LIMIT_DEFAULT=60  # Default requests per window (default: 60)
 RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
+
+# Superadmin Initialization (Optional)
+# Customize the default superadmin username and email
+DEFAULT_ADMIN_USERNAME=freqhub  # Default: freqhub
+DEFAULT_ADMIN_EMAIL=admin@freqhub.local  # Default: admin@freqhub.local
 ```
 
 **Note**: If `VALKEY_ENABLED=false` or Valkey is unavailable, the system automatically falls back to in-memory caching. This ensures the application works even without Valkey, though with reduced performance for multi-bot scenarios.
@@ -518,6 +570,7 @@ FreqHub is built with:
 - TypeScript
 - SQLite (with migration path to Postgres/MySQL)
 - AES-256-CBC encryption for passwords
+- bcrypt for password hashing (user authentication)
 - Valkey (Redis-compatible cache) - Optional, with in-memory fallback
 - ioredis (Valkey/Redis client)
 - Socket.io (WebSocket server)
@@ -525,6 +578,7 @@ FreqHub is built with:
 - Event Bus with Valkey Pub/Sub for real-time event distribution
 - Automatic polling service for proactive data freshness
 - Online/offline detection with real-time event publishing
+- User management and audit logging system (Phase 1 complete)
 
 ## 🤝 Contributing
 

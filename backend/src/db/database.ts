@@ -19,8 +19,9 @@
 import Database from 'better-sqlite3';
 import { env } from '../config/env.js';
 import { createBotsTable } from './schema.js';
-import { mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { mkdirSync, readdirSync, readFileSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 let db: Database.Database | null = null;
 
@@ -47,20 +48,64 @@ export function getDatabase(): Database.Database {
   db.exec(createBotsTable);
   
   // Apply migrations
-  try {
-    // Check if notes column exists
-    const tableInfo = db.prepare("PRAGMA table_info(bots)").all() as Array<{ name: string }>;
-    const hasNotesColumn = tableInfo.some(col => col.name === 'notes');
-    
-    if (!hasNotesColumn) {
-      db.exec('ALTER TABLE bots ADD COLUMN notes TEXT');
-    }
-  } catch (error) {
-    // Migration failed, but continue - column might already exist
-    console.warn('Migration warning:', error);
-  }
+  applyMigrations(db);
 
   return db;
+}
+
+/**
+ * Apply all database migrations in order
+ */
+function applyMigrations(db: Database.Database): void {
+  try {
+    // Get migrations directory
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const migrationsPath = join(__dirname, 'migrations');
+    
+    // Read all migration files and sort them
+    const migrationFiles = readdirSync(migrationsPath)
+      .filter((file) => file.endsWith('.sql'))
+      .sort();
+    
+    // Apply each migration
+    for (const migrationFile of migrationFiles) {
+      try {
+        const migrationSql = readFileSync(join(migrationsPath, migrationFile), 'utf8');
+        
+        // For ALTER TABLE ADD COLUMN, check if column exists first (SQLite limitation)
+        if (migrationFile === '002_add_notes.sql') {
+          const tableInfo = db.prepare("PRAGMA table_info(bots)").all() as Array<{ name: string }>;
+          const hasNotes = tableInfo.some(col => col.name === 'notes');
+          
+          if (!hasNotes) {
+            db.exec('ALTER TABLE bots ADD COLUMN notes TEXT');
+          }
+        } else if (migrationFile === '006_add_ownership_to_bots.sql') {
+          const tableInfo = db.prepare("PRAGMA table_info(bots)").all() as Array<{ name: string }>;
+          const hasCreatedBy = tableInfo.some(col => col.name === 'created_by');
+          const hasUpdatedBy = tableInfo.some(col => col.name === 'updated_by');
+          
+          if (!hasCreatedBy) {
+            db.exec('ALTER TABLE bots ADD COLUMN created_by TEXT');
+          }
+          if (!hasUpdatedBy) {
+            db.exec('ALTER TABLE bots ADD COLUMN updated_by TEXT');
+          }
+        } else {
+          // Execute migration SQL
+          db.exec(migrationSql);
+        }
+      } catch (error) {
+        // Migration might have already been applied or failed
+        // Log warning but continue
+        console.warn(`Migration warning for ${migrationFile}:`, error);
+      }
+    }
+  } catch (error) {
+    // Migrations directory might not exist or be inaccessible
+    console.warn('Migration directory error:', error);
+  }
 }
 
 export function closeDatabase(): void {

@@ -32,6 +32,7 @@ import { swaggerSpec } from './config/swagger.js';
 import { valkeyService } from './services/valkey.service.js';
 import { websocketService } from './services/websocket.service.js';
 import { pollingService } from './services/polling.service.js';
+import { initializeSystem } from './services/init.service.js';
 import { appLogger } from './utils/logger.js';
 
 // Initialize database
@@ -113,24 +114,30 @@ app.use(errorHandler);
 // Start server
 const PORT = parseInt(env.PORT, 10);
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 FreqHub Backend running on http://localhost:${PORT}`);
-  console.log(`📊 Environment: ${env.NODE_ENV}`);
-  console.log(`💾 Database: ${env.DATABASE_PATH}`);
-  if (basePath) {
-    console.log(`🔗 Base Path: ${basePath}`);
-    console.log(`   Health: http://localhost:${PORT}${basePath}/api/healthz`);
-    console.log(`   Bots: http://localhost:${PORT}${basePath}/api/bots`);
-    console.log(`   Swagger: http://localhost:${PORT}${basePath}/api-docs`);
-  } else {
-    console.log(`🔗 Base Path: / (root)`);
-    console.log(`   Health: http://localhost:${PORT}/api/healthz`);
-    console.log(`   Bots: http://localhost:${PORT}/api/bots`);
-    console.log(`   Swagger: http://localhost:${PORT}/api-docs`);
-  }
+// Initialize system (create superadmin if needed) before starting server
+initializeSystem().then(() => {
+  httpServer.listen(PORT, () => {
+    console.log(`🚀 FreqHub Backend running on http://localhost:${PORT}`);
+    console.log(`📊 Environment: ${env.NODE_ENV}`);
+    console.log(`💾 Database: ${env.DATABASE_PATH}`);
+    if (basePath) {
+      console.log(`🔗 Base Path: ${basePath}`);
+      console.log(`   Health: http://localhost:${PORT}${basePath}/api/healthz`);
+      console.log(`   Bots: http://localhost:${PORT}${basePath}/api/bots`);
+      console.log(`   Swagger: http://localhost:${PORT}${basePath}/api-docs`);
+    } else {
+      console.log(`🔗 Base Path: / (root)`);
+      console.log(`   Health: http://localhost:${PORT}/api/healthz`);
+      console.log(`   Bots: http://localhost:${PORT}/api/bots`);
+      console.log(`   Swagger: http://localhost:${PORT}/api-docs`);
+    }
 
-  // Start polling service
-  pollingService.start();
+    // Start polling service
+    pollingService.start();
+  });
+}).catch((error) => {
+  appLogger.error('Failed to initialize system:', error);
+  process.exit(1);
 });
 
 export default app;

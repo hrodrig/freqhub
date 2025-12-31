@@ -90,6 +90,8 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     is_enabled: 1,
     is_selected: 0,
     notes: data.notes || null,
+    created_by: null,
+    updated_by: null,
     created_at: now,
     updated_at: now,
   };
@@ -98,8 +100,8 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     INSERT INTO bots (
       id, name, api_url, ws_url, username, encrypted_password,
       access_token, token_expires_at, is_enabled, is_selected, notes,
-      created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      created_by, updated_by, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -114,6 +116,8 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     botDB.is_enabled,
     botDB.is_selected,
     botDB.notes,
+    botDB.created_by,
+    botDB.updated_by,
     botDB.created_at,
     botDB.updated_at
   );
