@@ -17,7 +17,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, X, Edit, Trash2, TestTube, CheckCircle2, XCircle, Loader2, Play, Square, Pause, RotateCcw, Settings } from 'lucide-react';
+import { Plus, X, Edit, Trash2, TestTube, CheckCircle2, XCircle, Loader2, Play, Square, Pause, RotateCcw, Settings, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useBotStore } from '../stores/botStore.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';

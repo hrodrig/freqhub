@@ -1032,7 +1032,8 @@ export function createProxyRouter(): Router {
       } else {
         appLogger.info(`[PROXY] Direct proxy (no cache) for path: ${normalizedPath}`);
         // For other endpoints, use direct proxy
-        data = await proxyRequest(req.params.id, 'GET', finalPath);
+        // Skip rate limit in proxyRequest since we already checked it above
+        data = await proxyRequest(req.params.id, 'GET', finalPath, undefined, true);
       }
 
       // Add cache indicator headers
@@ -1115,7 +1116,8 @@ export function createProxyRouter(): Router {
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
 
-      const data = await proxyRequest(req.params.id, 'POST', fullPath, req.body);
+      // Skip rate limit in proxyRequest since we already checked it above
+      const data = await proxyRequest(req.params.id, 'POST', fullPath, req.body, true);
       return res.json(data);
     } catch (error) {
       // Handle rate limit errors
@@ -1188,7 +1190,8 @@ export function createProxyRouter(): Router {
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
 
-      const data = await proxyRequest(req.params.id, 'PUT', fullPath, req.body);
+      // Skip rate limit in proxyRequest since we already checked it above
+      const data = await proxyRequest(req.params.id, 'PUT', fullPath, req.body, true);
       return res.json(data);
     } catch (error) {
       // Handle rate limit errors
@@ -1255,7 +1258,8 @@ export function createProxyRouter(): Router {
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
 
-      const data = await proxyRequest(req.params.id, 'DELETE', fullPath);
+      // Skip rate limit in proxyRequest since we already checked it above
+      const data = await proxyRequest(req.params.id, 'DELETE', fullPath, undefined, true);
       return res.json(data);
     } catch (error) {
       // Handle rate limit errors

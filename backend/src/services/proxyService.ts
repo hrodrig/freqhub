@@ -111,7 +111,8 @@ export async function proxyRequest(
   botId: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
-  body?: unknown
+  body?: unknown,
+  skipRateLimit: boolean = false
 ): Promise<unknown> {
   const bot = getBotWithCredentials(botId);
   if (!bot) {
@@ -122,20 +123,25 @@ export async function proxyRequest(
     throw new Error('Bot is disabled');
   }
 
-  // Check rate limit
-  const rateLimit = await rateLimitService.checkLimit(
-    botId,
-    env.RATE_LIMIT_DEFAULT,
-    env.RATE_LIMIT_WINDOW
-  );
+  // Check rate limit only if not skipped
+  // Note: Routes apply rate limit before calling proxyRequest, so skipRateLimit should be true
+  // when called from routes. When called from botService (polling), skipRateLimit is also true
+  // to avoid double counting. Only direct calls to proxyRequest should apply rate limit.
+  if (!skipRateLimit) {
+    const rateLimit = await rateLimitService.checkLimit(
+      botId,
+      env.RATE_LIMIT_DEFAULT,
+      env.RATE_LIMIT_WINDOW
+    );
 
-  if (!rateLimit.allowed) {
-    const error = new Error(
-      `Rate limit exceeded: ${rateLimit.remaining}/${rateLimit.limit} requests remaining. Retry after ${rateLimit.retryAfter}s`
-    ) as Error & { statusCode?: number; retryAfter?: number };
-    error.statusCode = 429;
-    error.retryAfter = rateLimit.retryAfter;
-    throw error;
+    if (!rateLimit.allowed) {
+      const error = new Error(
+        `Rate limit exceeded: ${rateLimit.remaining}/${rateLimit.limit} requests remaining. Retry after ${rateLimit.retryAfter}s`
+      ) as Error & { statusCode?: number; retryAfter?: number };
+      error.statusCode = 429;
+      error.retryAfter = rateLimit.retryAfter;
+      throw error;
+    }
   }
 
   // Check if we have a valid token

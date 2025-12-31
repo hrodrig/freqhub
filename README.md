@@ -271,7 +271,9 @@ RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
 
 Set `POLLING_ENABLED=false` to disable it if you prefer on-demand caching only.
 
-**Rate Limiting**: Protects Freqtrade APIs from being overwhelmed by too many requests. Each bot has its own rate limit counter (default: 60 requests per 60 seconds). When the limit is exceeded, requests return HTTP 429 with `Retry-After` header. All responses include `X-RateLimit-*` headers for monitoring. The service uses Valkey for distributed rate limiting (with in-memory fallback). Set `RATE_LIMIT_ENABLED=false` to disable it.
+**Rate Limiting**: Protects Freqtrade APIs from being overwhelmed by too many requests. Each bot has its own rate limit counter (default: 60 requests per 60 seconds). When the limit is exceeded, requests return HTTP 429 with `Retry-After` header. All responses include `X-RateLimit-*` headers for monitoring. The service uses Valkey for distributed rate limiting (with in-memory fallback). 
+
+**Important**: The polling service does NOT count towards rate limits, as it's an internal service that keeps the cache fresh. Only frontend requests (via API routes) are rate-limited. Set `RATE_LIMIT_ENABLED=false` to disable it.
 
 ### Frontend Setup
 

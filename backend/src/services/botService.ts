@@ -301,8 +301,8 @@ export async function getBotOpenTrades(botId: string): Promise<{ data: unknown; 
   cacheStatsService.recordMiss(cacheKey);
   appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
-  // Fetch from API
-  const status = await proxyRequest(botId, 'GET', 'api/v1/status');
+  // Fetch from API (skip rate limit for polling service)
+  const status = await proxyRequest(botId, 'GET', 'api/v1/status', undefined, true);
   
   // Cache for 5 seconds
   await cacheService.set(cacheKey, status, 5);
@@ -334,8 +334,8 @@ export async function getBotPing(botId: string): Promise<{ data: unknown; fromCa
   cacheStatsService.recordMiss(cacheKey);
   appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
-  // Fetch from API
-  const ping = await proxyRequest(botId, 'GET', 'api/v1/ping');
+  // Fetch from API (skip rate limit for polling service)
+  const ping = await proxyRequest(botId, 'GET', 'api/v1/ping', undefined, true);
   
   // Cache for 10 seconds
   await cacheService.set(cacheKey, ping, 10);
@@ -367,8 +367,8 @@ export async function getBotBalance(botId: string): Promise<{ data: unknown; fro
   cacheStatsService.recordMiss(cacheKey);
   appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
-  // Fetch from API
-  const balance = await proxyRequest(botId, 'GET', 'api/v1/balance');
+  // Fetch from API (skip rate limit for polling service)
+  const balance = await proxyRequest(botId, 'GET', 'api/v1/balance', undefined, true);
   
   // Cache for 10 seconds
   await cacheService.set(cacheKey, balance, 10);
@@ -400,9 +400,9 @@ export async function getBotTrades(botId: string, limit?: number): Promise<{ dat
   cacheStatsService.recordMiss(cacheKey);
   appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
-  // Fetch from API
+  // Fetch from API (skip rate limit for polling service)
   const path = limit ? `api/v1/trades?limit=${limit}` : 'api/v1/trades';
-  const trades = await proxyRequest(botId, 'GET', path);
+  const trades = await proxyRequest(botId, 'GET', path, undefined, true);
   
   // Cache for 5 seconds
   await cacheService.set(cacheKey, trades, 5);
@@ -434,8 +434,8 @@ export async function getBotState(botId: string): Promise<{ data: unknown; fromC
   cacheStatsService.recordMiss(cacheKey);
   appLogger.info(`[CACHE] MISS: ${cacheKey} - fetching from API`);
   
-  // Fetch from API
-  const state = await proxyRequest(botId, 'GET', 'api/v1/show_config');
+  // Fetch from API (skip rate limit for polling service)
+  const state = await proxyRequest(botId, 'GET', 'api/v1/show_config', undefined, true);
   
   // Cache for 30 seconds (config changes less frequently)
   await cacheService.set(cacheKey, state, 30);
