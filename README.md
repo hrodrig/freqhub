@@ -55,7 +55,10 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **WebSocket Support**: Real-time bidirectional communication for live updates to the frontend
 - ✅ **Real-Time Bot Updates**: Automatic event publishing when bot data changes (trades, balance, status)
 - ✅ **Automatic Polling Service**: Background service that keeps bot data fresh in cache, ensuring instant dashboard loads
+- ✅ **Online/Offline Detection**: Real-time detection of bot connectivity changes with automatic event publishing
 - ✅ **Rate Limiting**: Protects Freqtrade APIs from being overwhelmed with configurable limits per bot
+- ✅ **Bot Notes**: Add custom notes to each bot for better organization and documentation
+- ✅ **Modern Frontend UI**: Complete React-based dashboard with real-time updates, bot management, and detailed views
 
 ### Planned Features
 
@@ -128,12 +131,23 @@ npm run dev
 
 # Frontend setup (in another terminal)
 cd frontend
-cp .env.example .env
+cp .env.example .env  # If .env.example exists
 npm install  # or pnpm install / yarn install
+
+# Install UI dependencies (Tailwind CSS, Shadcn UI, etc.)
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+
+# Install additional dependencies for modern UI
+npm install recharts lucide-react
+npm install -D @types/node
+
 npm run dev
 ```
 
 The backend will start on `http://localhost:3001` and the frontend on `http://localhost:3000`.
+
+**Note:** The Makefile (`make setup`) automates all of the above steps for faster setup.
 
 ### Production Build
 
@@ -247,9 +261,59 @@ RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
 
 **Note**: If `VALKEY_ENABLED=false` or Valkey is unavailable, the system automatically falls back to in-memory caching. This ensures the application works even without Valkey, though with reduced performance for multi-bot scenarios.
 
-**Polling Service**: The polling service runs in the background and automatically refreshes bot data (ping, open trades, balance) to keep the cache fresh. This ensures that when users open the dashboard, data is already available. The service is smart and skips bots that already have fresh cache data, reducing unnecessary API calls. Set `POLLING_ENABLED=false` to disable it if you prefer on-demand caching only.
+**Polling Service**: The polling service runs in the background and automatically refreshes bot data (ping, open trades, balance, state) to keep the cache fresh. This ensures that when users open the dashboard, data is already available. The service is smart and skips bots that already have fresh cache data, reducing unnecessary API calls. 
+
+**Key Features:**
+- Always checks bot connectivity (ping) first, even if cache is fresh, to detect online/offline changes
+- Publishes `bot_online` and `bot_offline` events when bot connectivity changes
+- Only polls other endpoints (trades, balance, state) if bot is online
+- Automatically detects bots that come back online after being offline
+
+Set `POLLING_ENABLED=false` to disable it if you prefer on-demand caching only.
 
 **Rate Limiting**: Protects Freqtrade APIs from being overwhelmed by too many requests. Each bot has its own rate limit counter (default: 60 requests per 60 seconds). When the limit is exceeded, requests return HTTP 429 with `Retry-After` header. All responses include `X-RateLimit-*` headers for monitoring. The service uses Valkey for distributed rate limiting (with in-memory fallback). Set `RATE_LIMIT_ENABLED=false` to disable it.
+
+### Frontend Setup
+
+**With Makefile (Recommended):**
+```bash
+make setup  # Installs all dependencies including frontend
+make dev-frontend  # Start frontend only
+```
+
+**Manual Setup:**
+```bash
+cd frontend
+npm install  # or pnpm install / yarn install
+
+# Install UI dependencies (Tailwind CSS, Shadcn UI, etc.)
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+
+# Install additional dependencies for modern UI
+npm install recharts lucide-react
+npm install -D @types/node
+
+# Create .env file
+cp .env.example .env  # If .env.example exists
+# Or create manually with:
+# VITE_BASE_PATH=/
+# VITE_API_PROXY_TARGET=http://localhost:3001
+
+npm run dev
+```
+
+**Frontend Dependencies:**
+- **React 18** - UI framework
+- **Vite** - Build tool and dev server
+- **React Router** - Client-side routing
+- **Zustand** - State management
+- **Axios** - HTTP client
+- **Socket.io-client** - WebSocket client for real-time updates
+- **Tailwind CSS v4** - Utility-first CSS framework
+- **Recharts** - Chart library for data visualization
+- **Lucide React** - Modern icon library
+- **Zod** - Schema validation
 
 ### Frontend Environment Variables
 
@@ -395,28 +459,44 @@ cd backend
 1. Navigate to "Bots" in the navigation
 2. Click "Add Bot"
 3. Enter:
-   - Bot name
+   - Bot name (e.g., "EMAC-RSI-EMA200" - typically the strategy name)
    - Freqtrade API URL (e.g., `http://freqtrade-pod-1:8080`)
    - Username
    - Password
-4. The system will test the connection before saving
-5. Bot is added and ready to use
+   - Notes (optional): Add custom notes about the bot's configuration, strategy, or purpose
+4. Enable/Disable toggle: Control whether the bot is actively monitored
+5. The system will test the connection before saving
+6. Bot is added and ready to use
+
+**Note**: Each bot displays its UUID below the name for easy identification and debugging when matching with backend logs.
 
 ### Dashboard View
 
 The main dashboard provides:
-- **Aggregated Statistics**: Total profit, win rate, active trades across all bots
-- **Bot Status**: Health and status of each connected bot
-- **Quick Access**: Click on any bot to view details
+- **Aggregated Statistics**: Total bots, enabled bots, total trades, and total profit (with time period selector)
+- **Bot Status Cards**: Real-time status for each enabled bot showing:
+  - Online/Offline connectivity status
+  - Operational state (Running/Stopped/Paused)
+  - Trading mode (Dry Run / Live Trading)
+  - Exchange, Strategy, Timeframe, Stoploss
+  - Open trades count and profit
+  - Bot UUID for debugging
+- **Quick Actions**: Start, Stop, Pause, Reload Config, Refresh, and Settings buttons for each bot
+- **Real-Time Updates**: All data updates automatically via WebSocket when bot status changes
+- **Global Refresh**: Manual refresh button to update all bots progressively (non-blocking)
 
 ### Individual Bot Views
 
 Click on any bot to view:
-- Real-time trading performance
-- Active trades and positions
-- Historical trades
-- Balance and profit information
-- Bot controls (start/stop/pause)
+- **Configuration**: API URL, WebSocket URL, username, notes, creation/update timestamps
+- **Bot Status**: Current state (running/stopped/paused), mode (dry run/live), strategy, stake currency
+- **Balance**: Total balance, stake currency, value, and detailed currency breakdown
+- **Open Trades**: List of currently open trades with pair, amount, open rate, and profit
+- **Closed Trades**: Recent closed trades with exit reasons and profit
+- **Bot Controls**: Start, Stop, Pause, and Reload Config buttons (disabled based on current state)
+- **Real-Time Updates**: All data refreshes automatically every 10 seconds
+
+**Note**: Running bots cannot be edited or deleted. Stop the bot first to modify its configuration.
 
 ## 🏗️ Architecture
 
@@ -441,6 +521,8 @@ FreqHub is built with:
 - Socket.io (WebSocket server)
 - Smart caching layer for bot states, balances, trades, and configurations
 - Event Bus with Valkey Pub/Sub for real-time event distribution
+- Automatic polling service for proactive data freshness
+- Online/offline detection with real-time event publishing
 
 ## 🤝 Contributing
 

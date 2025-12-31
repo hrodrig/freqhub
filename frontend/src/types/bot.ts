@@ -16,10 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import type { BotDB } from '../db/schema.js';
-
 /**
- * Bot model for frontend (without sensitive data)
+ * Bot type for frontend (without sensitive data)
  */
 export interface Bot {
   id: string;
@@ -27,9 +25,9 @@ export interface Bot {
   apiUrl: string;
   wsUrl: string | null;
   username: string;
+  notes?: string;
   isEnabled: boolean;
   isSelected: boolean;
-  notes?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -55,44 +53,8 @@ export interface UpdateBotRequest {
   wsUrl?: string;
   username?: string;
   password?: string;
+  notes?: string;
   isEnabled?: boolean;
   isSelected?: boolean;
-  notes?: string;
-}
-
-/**
- * Convert BotDB to Bot (remove sensitive data)
- */
-export function botDBToBot(botDB: BotDB): Bot {
-  return {
-    id: botDB.id,
-    name: botDB.name,
-    apiUrl: botDB.api_url,
-    wsUrl: botDB.ws_url,
-    username: botDB.username,
-    isEnabled: botDB.is_enabled === 1,
-    isSelected: botDB.is_selected === 1,
-    // Handle notes field - it might not exist in older databases
-    notes: 'notes' in botDB ? (botDB.notes || null) : null,
-    createdAt: botDB.created_at,
-    updatedAt: botDB.updated_at,
-  };
-}
-
-/**
- * Convert Bot to BotDB format
- */
-export function botToBotDB(bot: Partial<Bot>): Partial<BotDB> {
-  const botDB: Partial<BotDB> = {};
-  
-  if (bot.name !== undefined) botDB.name = bot.name;
-  if (bot.apiUrl !== undefined) botDB.api_url = bot.apiUrl;
-  if (bot.wsUrl !== undefined) botDB.ws_url = bot.wsUrl;
-  if (bot.username !== undefined) botDB.username = bot.username;
-  if (bot.isEnabled !== undefined) botDB.is_enabled = bot.isEnabled ? 1 : 0;
-  if (bot.isSelected !== undefined) botDB.is_selected = bot.isSelected ? 1 : 0;
-  if (bot.notes !== undefined) botDB.notes = bot.notes || null;
-  
-  return botDB;
 }
 

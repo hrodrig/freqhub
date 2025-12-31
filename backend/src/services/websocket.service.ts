@@ -99,6 +99,7 @@ class WebSocketService {
       
       // 2. If it's a bot event, send to the bot room
       if (event.botId) {
+        appLogger.debug(`WebSocket: Forwarding ${event.type} event for bot ${event.botId} to room bot:${event.botId}`);
         this.io.to(`bot:${event.botId}`).emit('bot_event', event);
       }
 

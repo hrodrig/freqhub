@@ -34,6 +34,7 @@ const createBotSchema = z.object({
   wsUrl: z.string().url('Invalid WebSocket URL').optional(),
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
+  notes: z.string().optional(),
 });
 
 const updateBotSchema = z.object({
@@ -44,6 +45,7 @@ const updateBotSchema = z.object({
   password: z.string().min(1).optional(),
   isEnabled: z.boolean().optional(),
   isSelected: z.boolean().optional(),
+  notes: z.string().optional(),
 });
 
 export function createBotsRouter(): Router {

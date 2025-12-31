@@ -300,10 +300,642 @@ export function createProxyRouter(): Router {
    *               type: object
    *       500:
    *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/profit:
+   *   get:
+   *     summary: Get profit summary (cached)
+   *     description: Returns the profit summary for a Freqtrade bot. This endpoint uses intelligent caching (10s TTL).
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Profit summary
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/performance:
+   *   get:
+   *     summary: Get coin performance
+   *     description: Returns the performance of different coins for a Freqtrade bot.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Coin performance data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/daily:
+   *   get:
+   *     summary: Get daily profits
+   *     description: Returns the profits for each day and amount of trades.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Daily profit data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/weekly:
+   *   get:
+   *     summary: Get weekly profits
+   *     description: Returns the profits for each week and amount of trades.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Weekly profit data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/monthly:
+   *   get:
+   *     summary: Get monthly profits
+   *     description: Returns the profits for each month and amount of trades.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Monthly profit data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/stats:
+   *   get:
+   *     summary: Get statistics report
+   *     description: Returns the stats report including durations and sell-reasons.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Statistics report
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/whitelist:
+   *   get:
+   *     summary: Get trading whitelist
+   *     description: Returns the current trading whitelist.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Trading whitelist
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: string
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/blacklist:
+   *   get:
+   *     summary: Get trading blacklist
+   *     description: Returns the current trading blacklist.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Trading blacklist
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *               items:
+   *                 type: string
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/locks:
+   *   get:
+   *     summary: Get locked pairs
+   *     description: Returns currently locked pairs.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Locked pairs
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/logs:
+   *   get:
+   *     summary: Get bot logs
+   *     description: Returns the latest log messages from the bot.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *         description: Limit number of log messages (optional)
+   *     responses:
+   *       200:
+   *         description: Bot logs
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/version:
+   *   get:
+   *     summary: Get bot version
+   *     description: Returns the version of the Freqtrade bot.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot version information
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/strategies:
+   *   get:
+   *     summary: List available strategies
+   *     description: Returns a list of available strategies.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: List of strategies
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/strategy:
+   *   get:
+   *     summary: Get strategy details
+   *     description: Returns details for a specific strategy.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: query
+   *         name: strategy
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Strategy class name
+   *     responses:
+   *       200:
+   *         description: Strategy details
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/entries:
+   *   get:
+   *     summary: Get entry tag performance
+   *     description: Returns performance statistics based on buy tags. Can be filtered by pair.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: query
+   *         name: pair
+   *         schema:
+   *           type: string
+   *         description: Filter by specific pair (optional)
+   *     responses:
+   *       200:
+   *         description: Entry tag performance data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/exits:
+   *   get:
+   *     summary: Get exit reason performance
+   *     description: Returns performance statistics based on exit reasons. Can be filtered by pair.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: query
+   *         name: pair
+   *         schema:
+   *           type: string
+   *         description: Filter by specific pair (optional)
+   *     responses:
+   *       200:
+   *         description: Exit reason performance data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/mix_tags:
+   *   get:
+   *     summary: Get entry+exit tag performance
+   *     description: Returns performance statistics based on entry_tag + exit_reason combinations. Can be filtered by pair.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *       - in: query
+   *         name: pair
+   *         schema:
+   *           type: string
+   *         description: Filter by specific pair (optional)
+   *     responses:
+   *       200:
+   *         description: Entry+Exit tag performance data
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: array
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/count:
+   *   get:
+   *     summary: Get open trades count
+   *     description: Returns the amount of open trades.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Open trades count
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/health:
+   *   get:
+   *     summary: Get bot health check
+   *     description: Provides a quick health check of the running bot.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot health status
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/sysinfo:
+   *   get:
+   *     summary: Get system information
+   *     description: Provides system information including CPU and RAM usage.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: System information
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/start:
+   *   post:
+   *     summary: Start the bot
+   *     description: Starts the bot if it's in the stopped state.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot started successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/stop:
+   *   post:
+   *     summary: Stop the bot
+   *     description: Stops the bot. Use start to restart.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot stopped successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/pause:
+   *   post:
+   *     summary: Pause the bot
+   *     description: Pauses the bot (stops buying but handles sells gracefully). Use reload_config to reset.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Bot paused successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/reload_config:
+   *   post:
+   *     summary: Reload configuration
+   *     description: Reloads the configuration file without restarting the bot.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     responses:
+   *       200:
+   *         description: Configuration reloaded successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/forceenter:
+   *   post:
+   *     summary: Force enter a trade
+   *     description: Forces entering a trade with specified parameters.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - pair
+   *             properties:
+   *               pair:
+   *                 type: string
+   *                 example: "BTC/USDT"
+   *                 description: Pair to buy
+   *               side:
+   *                 type: string
+   *                 enum: [long, short]
+   *                 description: Trade side (long or short)
+   *               price:
+   *                 type: number
+   *                 description: Optional price to buy
+   *               order_type:
+   *                 type: string
+   *                 enum: [limit, market]
+   *                 description: Order type (limit or market)
+   *               stake_amount:
+   *                 type: number
+   *                 description: Stake amount (as float)
+   *               leverage:
+   *                 type: number
+   *                 description: Leverage (as float)
+   *               enter_tag:
+   *                 type: string
+   *                 description: Entry tag (default is force_enter)
+   *     responses:
+   *       200:
+   *         description: Trade entered successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
+   * /api/bots/{id}/proxy/api/v1/forceexit:
+   *   post:
+   *     summary: Force exit a trade
+   *     description: Forces exiting a trade with specified parameters.
+   *     tags: [Proxy]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *           format: uuid
+   *         description: Bot ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - tradeid
+   *             properties:
+   *               tradeid:
+   *                 type: integer
+   *                 description: ID of the trade (can be received via status command)
+   *               ordertype:
+   *                 type: string
+   *                 enum: [market, limit]
+   *                 description: Order type to use (must be market or limit)
+   *               amount:
+   *                 type: number
+   *                 description: Amount to sell. Full sell if not given
+   *     responses:
+   *       200:
+   *         description: Trade exited successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *       500:
+   *         description: Server error
    * /api/bots/{id}/proxy/{path}:
    *   get:
-   *     summary: Proxy GET request to Freqtrade
-   *     description: Proxies any GET request to the Freqtrade bot instance. Common endpoints like /api/v1/status, /api/v1/balance, /api/v1/trades, and /api/v1/show_config are automatically cached.
+   *     summary: Proxy GET request to Freqtrade (All endpoints supported)
+   *     description: Proxies any GET request to the Freqtrade bot instance. All Freqtrade REST API GET endpoints are supported. Common endpoints like /api/v1/status, /api/v1/balance, /api/v1/trades, and /api/v1/show_config are automatically cached. Query parameters are automatically forwarded to Freqtrade. See Freqtrade REST API documentation for complete endpoint reference.
    *     tags: [Proxy]
    *     parameters:
    *       - in: path
@@ -318,7 +950,7 @@ export function createProxyRouter(): Router {
    *         required: true
    *         schema:
    *           type: string
-   *         description: Freqtrade API path (e.g., api/v1/status, api/v1/balance)
+   *         description: Freqtrade API path (e.g., api/v1/status, api/v1/trades?limit=100)
    *     responses:
    *       200:
    *         description: Response from Freqtrade API
@@ -431,8 +1063,8 @@ export function createProxyRouter(): Router {
    * @swagger
    * /api/bots/{id}/proxy/{path}:
    *   post:
-   *     summary: Proxy POST request to Freqtrade
-   *     description: Proxies any POST request to the Freqtrade bot instance. Cache is automatically invalidated for the bot on write operations.
+   *     summary: Proxy POST request to Freqtrade (All endpoints supported)
+   *     description: Proxies any POST request to the Freqtrade bot instance. All Freqtrade REST API POST endpoints are supported. Cache is automatically invalidated for the bot on write operations. Supported endpoints include /api/v1/start, /api/v1/stop, /api/v1/pause, /api/v1/reload_config, /api/v1/forceenter, /api/v1/forceexit, /api/v1/blacklist, /api/v1/locks, and more. Request body parameters are automatically forwarded to Freqtrade. See Freqtrade REST API documentation for complete endpoint reference.
    *     tags: [Proxy]
    *     parameters:
    *       - in: path
@@ -447,13 +1079,17 @@ export function createProxyRouter(): Router {
    *         required: true
    *         schema:
    *           type: string
-   *         description: Freqtrade API path
+   *         description: Freqtrade API path (e.g., api/v1/start, api/v1/forceenter)
    *     requestBody:
-   *       description: Request body to forward to Freqtrade
+   *       description: Request body parameters to forward to Freqtrade (varies by endpoint)
+   *       required: false
    *       content:
    *         application/json:
    *           schema:
    *             type: object
+   *             example:
+   *               pair: "BTC/USDT"
+   *               price: 50000
    *     responses:
    *       200:
    *         description: Response from Freqtrade API
@@ -504,8 +1140,8 @@ export function createProxyRouter(): Router {
    * @swagger
    * /api/bots/{id}/proxy/{path}:
    *   put:
-   *     summary: Proxy PUT request to Freqtrade
-   *     description: Proxies any PUT request to the Freqtrade bot instance. Cache is automatically invalidated for the bot on write operations.
+   *     summary: Proxy PUT request to Freqtrade (All endpoints supported)
+   *     description: Proxies any PUT request to the Freqtrade bot instance. All Freqtrade REST API PUT endpoints are supported. Cache is automatically invalidated for the bot on write operations. See Freqtrade REST API documentation for complete endpoint reference.
    *     tags: [Proxy]
    *     parameters:
    *       - in: path
@@ -577,8 +1213,8 @@ export function createProxyRouter(): Router {
    * @swagger
    * /api/bots/{id}/proxy/{path}:
    *   delete:
-   *     summary: Proxy DELETE request to Freqtrade
-   *     description: Proxies any DELETE request to the Freqtrade bot instance. Cache is automatically invalidated for the bot on write operations.
+   *     summary: Proxy DELETE request to Freqtrade (All endpoints supported)
+   *     description: Proxies any DELETE request to the Freqtrade bot instance. All Freqtrade REST API DELETE endpoints are supported. Cache is automatically invalidated for the bot on write operations. Supported endpoints include /api/v1/trades/{trade_id}, /api/v1/trades/{trade_id}/open-order, /api/v1/locks, and more. See Freqtrade REST API documentation for complete endpoint reference.
    *     tags: [Proxy]
    *     parameters:
    *       - in: path
@@ -593,7 +1229,7 @@ export function createProxyRouter(): Router {
    *         required: true
    *         schema:
    *           type: string
-   *         description: Freqtrade API path
+   *         description: Freqtrade API path (e.g., api/v1/trades/123, api/v1/locks?lock_id=1)
    *     responses:
    *       200:
    *         description: Response from Freqtrade API

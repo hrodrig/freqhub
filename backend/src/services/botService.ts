@@ -31,18 +31,31 @@ import { appLogger } from '../utils/logger.js';
  * Get all bots
  */
 export function getAllBots(): Bot[] {
-  const db = getDatabase();
-  const bots = db.prepare('SELECT * FROM bots ORDER BY created_at DESC').all() as BotDB[];
-  return bots.map(botDBToBot);
+  try {
+    const db = getDatabase();
+    const bots = db.prepare('SELECT * FROM bots ORDER BY created_at DESC').all() as BotDB[];
+    return bots.map(botDBToBot);
+  } catch (error) {
+    appLogger.error('Error getting all bots:', error);
+    throw error;
+  }
 }
 
 /**
  * Get bot by ID
  */
 export function getBotById(id: string): Bot | null {
-  const db = getDatabase();
-  const bot = db.prepare('SELECT * FROM bots WHERE id = ?').get(id) as BotDB | undefined;
-  return bot ? botDBToBot(bot) : null;
+  try {
+    const db = getDatabase();
+    const bot = db.prepare('SELECT * FROM bots WHERE id = ?').get(id) as BotDB | undefined;
+    if (!bot) {
+      return null;
+    }
+    return botDBToBot(bot);
+  } catch (error) {
+    appLogger.error(`Error getting bot by ID ${id}:`, error);
+    throw error;
+  }
 }
 
 /**
@@ -76,6 +89,7 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     token_expires_at: null,
     is_enabled: 1,
     is_selected: 0,
+    notes: data.notes || null,
     created_at: now,
     updated_at: now,
   };
@@ -83,9 +97,9 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
   const stmt = db.prepare(`
     INSERT INTO bots (
       id, name, api_url, ws_url, username, encrypted_password,
-      access_token, token_expires_at, is_enabled, is_selected,
+      access_token, token_expires_at, is_enabled, is_selected, notes,
       created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -99,6 +113,7 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     botDB.token_expires_at,
     botDB.is_enabled,
     botDB.is_selected,
+    botDB.notes,
     botDB.created_at,
     botDB.updated_at
   );
@@ -157,6 +172,10 @@ export async function updateBot(id: string, data: UpdateBotRequest): Promise<Bot
   if (data.isSelected !== undefined) {
     updates.push('is_selected = ?');
     values.push(data.isSelected ? 1 : 0);
+  }
+  if (data.notes !== undefined) {
+    updates.push('notes = ?');
+    values.push(data.notes || null);
   }
 
   if (updates.length === 0) {
@@ -420,6 +439,13 @@ export async function getBotState(botId: string): Promise<{ data: unknown; fromC
   
   // Cache for 30 seconds (config changes less frequently)
   await cacheService.set(cacheKey, state, 30);
+  
+  // Publish event for real-time updates
+  eventBusService.publish({
+    type: 'bot_state_update',
+    botId,
+    data: state,
+  }).catch(() => {});
   
   return { data: state, fromCache: false };
 }

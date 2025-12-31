@@ -30,6 +30,13 @@ install: ## Install all dependencies (backend + frontend)
 	cd backend && npm install
 	@echo "$(BLUE)Installing frontend dependencies...$(NC)"
 	cd frontend && npm install
+	@echo "$(BLUE)Installing frontend UI dependencies (Tailwind, Recharts, etc.)...$(NC)"
+	cd frontend && npm install -D tailwindcss postcss autoprefixer @types/node || true
+	cd frontend && npm install recharts lucide-react || true
+	@if [ ! -f frontend/tailwind.config.js ] && [ ! -f frontend/tailwind.config.ts ]; then \
+		echo "$(BLUE)Initializing Tailwind CSS...$(NC)"; \
+		cd frontend && npx tailwindcss init -p || echo "$(YELLOW)⚠ Tailwind init skipped (may already exist)$(NC)"; \
+	fi
 	@echo "$(GREEN)✓ All dependencies installed$(NC)"
 
 setup: ## Complete initial setup (install + env files + example DB)

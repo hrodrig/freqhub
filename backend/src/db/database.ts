@@ -45,6 +45,20 @@ export function getDatabase(): Database.Database {
   
   // Initialize schema
   db.exec(createBotsTable);
+  
+  // Apply migrations
+  try {
+    // Check if notes column exists
+    const tableInfo = db.prepare("PRAGMA table_info(bots)").all() as Array<{ name: string }>;
+    const hasNotesColumn = tableInfo.some(col => col.name === 'notes');
+    
+    if (!hasNotesColumn) {
+      db.exec('ALTER TABLE bots ADD COLUMN notes TEXT');
+    }
+  } catch (error) {
+    // Migration failed, but continue - column might already exist
+    console.warn('Migration warning:', error);
+  }
 
   return db;
 }

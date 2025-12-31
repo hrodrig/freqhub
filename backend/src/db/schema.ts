@@ -31,6 +31,7 @@ export interface BotDB {
   token_expires_at: number | null;
   is_enabled: number; // 1 = true, 0 = false
   is_selected: number; // 1 = true, 0 = false
+  notes: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -47,6 +48,7 @@ export const createBotsTable = `
     token_expires_at INTEGER,
     is_enabled INTEGER DEFAULT 1,
     is_selected INTEGER DEFAULT 0,
+    notes TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   );

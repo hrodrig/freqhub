@@ -19,8 +19,9 @@
 import { env } from '../config/env.js';
 import { appLogger } from '../utils/logger.js';
 import { getAllBots } from './botService.js';
-import { getBotPing, getBotOpenTrades, getBotBalance } from './botService.js';
+import { getBotPing, getBotOpenTrades, getBotBalance, getBotState } from './botService.js';
 import { cacheService } from './cache.service.js';
+import { eventBusService } from './eventBus.service.js';
 
 /**
  * Polling Service
@@ -30,6 +31,7 @@ class PollingService {
   private intervalId: NodeJS.Timeout | null = null;
   private isRunning = false;
   private lastPollTime: Map<string, number> = new Map();
+  private botOnlineStatus: Map<string, boolean> = new Map(); // Track if bot was online in last poll
 
   /**
    * Start the polling service
@@ -87,6 +89,14 @@ class PollingService {
 
       appLogger.debug(`Polling ${bots.length} enabled bot(s)`);
 
+      // Initialize online status for bots that haven't been polled yet
+      bots.forEach((bot) => {
+        if (!this.botOnlineStatus.has(bot.id)) {
+          // Initialize as unknown (will be determined on first poll)
+          this.botOnlineStatus.set(bot.id, false);
+        }
+      });
+
       // Poll bots in parallel, but with a small delay between each to avoid overwhelming APIs
       const pollPromises = bots.map((bot, index) => 
         this.pollBot(bot.id, index * 100) // Stagger requests by 100ms
@@ -114,42 +124,129 @@ class PollingService {
     }
 
     try {
-      // Check if data is already fresh in cache
-      // We only poll if cache is about to expire or already expired
-      const pingKey = `bot:${botId}:ping`;
+      // Always check ping status first (even if cache is fresh) to detect online/offline changes
+      // Check if bot was online in the last poll
+      const wasOnline = this.botOnlineStatus.get(botId) ?? false;
+
+      // Try to ping the bot first to check if it's online
+      // This is critical for detecting online/offline state changes
+      let isNowOnline = false;
+      try {
+        await getBotPing(botId);
+        isNowOnline = true;
+      } catch (err) {
+        // Bot is offline
+        this.handlePollError(botId, 'ping', err);
+        isNowOnline = false;
+      }
+
+      // Update online status first to track changes
+      const previousStatus = this.botOnlineStatus.get(botId);
+      this.botOnlineStatus.set(botId, isNowOnline);
+      
+      // Log status change for debugging
+      if (previousStatus !== undefined && previousStatus !== isNowOnline) {
+        appLogger.info(`Bot ${botId} status changed: ${previousStatus ? 'online' : 'offline'} -> ${isNowOnline ? 'online' : 'offline'}`);
+      }
+
+      // If bot status changed from online to offline, publish event
+      if (wasOnline && !isNowOnline) {
+        appLogger.info(`Bot ${botId} went offline - publishing event`);
+        eventBusService.publish({
+          type: 'bot_offline',
+          botId,
+          data: { error: 'Bot is offline or unreachable' },
+        }).catch((err) => {
+          appLogger.error(`Failed to publish bot_offline event for ${botId}:`, err);
+        });
+      }
+
+      // If bot status changed from offline to online, publish event
+      if (!wasOnline && isNowOnline) {
+        appLogger.info(`Bot ${botId} came back online - publishing event`);
+        eventBusService.publish({
+          type: 'bot_online',
+          botId,
+          data: { message: 'Bot is back online' },
+        }).catch((err) => {
+          appLogger.error(`Failed to publish bot_online event for ${botId}:`, err);
+        });
+      }
+
+      // If bot is offline and we don't have a previous state (first poll), publish offline event
+      // This ensures bots that start offline are immediately reported
+      if (!isNowOnline && previousStatus === undefined) {
+        appLogger.info(`Bot ${botId} is offline (initial state) - publishing event`);
+        eventBusService.publish({
+          type: 'bot_offline',
+          botId,
+          data: { error: 'Bot is offline or unreachable' },
+        }).catch((err) => {
+          appLogger.error(`Failed to publish bot_offline event for ${botId}:`, err);
+        });
+      }
+
+      // Check if other data is already fresh in cache
+      // We only poll other endpoints if cache is about to expire or already expired
       const openTradesKey = `bot:${botId}:open_trades`;
       const balanceKey = `bot:${botId}:balance`;
+      const stateKey = `bot:${botId}:state`;
 
-      const [pingCached, tradesCached, balanceCached] = await Promise.all([
-        cacheService.get(pingKey),
+      const [tradesCached, balanceCached, stateCached] = await Promise.all([
         cacheService.get(openTradesKey),
         cacheService.get(balanceKey),
+        cacheService.get(stateKey),
       ]);
 
-      // If all data is fresh, skip polling this bot
-      if (pingCached !== null && tradesCached !== null && balanceCached !== null) {
-        appLogger.debug(`Skipping poll for bot ${botId} (cache is fresh)`);
+      // If all data is fresh, skip polling other endpoints
+      if (tradesCached !== null && balanceCached !== null && stateCached !== null) {
+        appLogger.debug(`Skipping poll for bot ${botId} (cache is fresh, but ping status checked)`);
         return;
       }
 
       appLogger.debug(`Polling bot ${botId}`);
 
-      // Poll the bot (this will update cache and publish events)
-      // We use Promise.allSettled to continue even if one fails
-      await Promise.allSettled([
-        getBotPing(botId).catch((err) => {
-          appLogger.warn(`Failed to poll ping for bot ${botId}:`, err instanceof Error ? err.message : err);
-        }),
-        getBotOpenTrades(botId).catch((err) => {
-          appLogger.warn(`Failed to poll open trades for bot ${botId}:`, err instanceof Error ? err.message : err);
-        }),
-        getBotBalance(botId).catch((err) => {
-          appLogger.warn(`Failed to poll balance for bot ${botId}:`, err instanceof Error ? err.message : err);
-        }),
-      ]);
+      // Only poll other endpoints if bot is online
+      if (isNowOnline) {
+        await Promise.allSettled([
+          getBotOpenTrades(botId).catch((err) => {
+            this.handlePollError(botId, 'open_trades', err);
+          }),
+          getBotBalance(botId).catch((err) => {
+            this.handlePollError(botId, 'balance', err);
+          }),
+          getBotState(botId).catch((err) => {
+            this.handlePollError(botId, 'state', err);
+          }),
+        ]);
+      }
 
     } catch (error) {
       appLogger.error(`Error polling bot ${botId}:`, error);
+    }
+  }
+
+  /**
+   * Handle polling errors with appropriate log level
+   */
+  private handlePollError(botId: string, endpoint: string, error: unknown): void {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Common connection errors that are expected when bots are offline
+    const isConnectionError = 
+      errorMessage.includes('ECONNRESET') ||
+      errorMessage.includes('socket hang up') ||
+      errorMessage.includes('ETIMEDOUT') ||
+      errorMessage.includes('ECONNREFUSED') ||
+      errorMessage.includes('ENOTFOUND') ||
+      errorMessage.includes('timeout');
+
+    if (isConnectionError) {
+      // Log connection errors at debug level (expected when bots are offline)
+      appLogger.debug(`Bot ${botId} is unreachable (${endpoint}): ${errorMessage}`);
+    } else {
+      // Log other errors at warn level (unexpected errors)
+      appLogger.warn(`Failed to poll ${endpoint} for bot ${botId}: ${errorMessage}`);
     }
   }
 
