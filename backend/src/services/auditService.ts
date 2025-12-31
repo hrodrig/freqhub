@@ -54,7 +54,9 @@ export function createAuditLog(request: CreateAuditLogRequest): AuditLog {
     auditLogDB.timestamp
   );
   
-  return auditLogDBToAuditLog(auditLogDB);
+  // For createAuditLog, we don't have username yet (it's inserted, not queried)
+  // We'll fetch it separately if needed, but for now return with null username
+  return auditLogDBToAuditLog(auditLogDB, null);
 }
 
 /**
@@ -108,16 +110,21 @@ export function getAuditLogs(filters: {
   const limitClause = filters.limit ? `LIMIT ${filters.limit}` : '';
   const offsetClause = filters.offset ? `OFFSET ${filters.offset}` : '';
   
+  // Join with users table to get username
   const query = `
-    SELECT * FROM audit_logs 
+    SELECT 
+      audit_logs.*,
+      users.username
+    FROM audit_logs
+    LEFT JOIN users ON audit_logs.user_id = users.id
     ${whereClause}
-    ORDER BY timestamp DESC
+    ORDER BY audit_logs.timestamp DESC
     ${limitClause}
     ${offsetClause}
   `;
   
-  const logs = db.prepare(query).all(...values) as AuditLogDB[];
-  return logs.map(auditLogDBToAuditLog);
+  const logs = db.prepare(query).all(...values) as (AuditLogDB & { username?: string | null })[];
+  return logs.map((log) => auditLogDBToAuditLog(log, log.username ?? null));
 }
 
 /**
@@ -125,8 +132,15 @@ export function getAuditLogs(filters: {
  */
 export function getAuditLogById(id: string): AuditLog | null {
   const db = getDatabase();
-  const log = db.prepare('SELECT * FROM audit_logs WHERE id = ?').get(id) as AuditLogDB | undefined;
-  return log ? auditLogDBToAuditLog(log) : null;
+  const log = db.prepare(`
+    SELECT 
+      audit_logs.*,
+      users.username
+    FROM audit_logs
+    LEFT JOIN users ON audit_logs.user_id = users.id
+    WHERE audit_logs.id = ?
+  `).get(id) as (AuditLogDB & { username?: string | null }) | undefined;
+  return log ? auditLogDBToAuditLog(log, log.username ?? null) : null;
 }
 
 /**

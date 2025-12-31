@@ -26,6 +26,7 @@ import { BotManagement } from './pages/BotManagement.js';
 import { BotDetail } from './pages/BotDetail.js';
 import { BotComparison } from './pages/BotComparison.js';
 import { Login } from './pages/Login.js';
+import { AuditLogs } from './pages/AuditLogs.js';
 
 function Navigation() {
   const { user, logout } = useAuth();
@@ -50,6 +51,11 @@ function Navigation() {
         <Link to="/compare" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
           Compare
         </Link>
+        {(user?.role === 'superadmin' || user?.role === 'auditor') && (
+          <Link to="/audit" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+            Audit Logs
+          </Link>
+        )}
         <Link to="/mock" style={{ color: '#e0e0e0', textDecoration: 'none' }}>
           Mock
         </Link>
@@ -116,6 +122,11 @@ function AppRoutes() {
           <Route path="/compare" element={
             <PrivateRoute>
               <BotComparison />
+            </PrivateRoute>
+          } />
+          <Route path="/audit" element={
+            <PrivateRoute requiredRole="auditor">
+              <AuditLogs />
             </PrivateRoute>
           } />
           <Route path="*" element={<div>404 - Not Found</div>} />

@@ -24,6 +24,7 @@ import { rateLimitService } from '../services/rateLimit.service.js';
 import { env } from '../config/env.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireBotViewAccess, requireBotOwnershipOrSuperadmin } from '../middleware/authorize.middleware.js';
+import { auditHelpers } from '../middleware/audit.middleware.js';
 
 /**
  * Helper function to check rate limit and set headers
@@ -62,6 +63,33 @@ export function createProxyRouter(): Router {
 
   // All routes require authentication
   router.use(authenticate);
+
+  // Helper to detect action from path and apply appropriate audit middleware
+  const auditProxyAction = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
+    const path = req.params[0] || '';
+    const normalizedPath = path.toLowerCase().replace(/^\/+/, '');
+    
+    // Detect specific bot control actions
+    let action: string | null = null;
+    if (normalizedPath.includes('api/v1/start')) {
+      action = 'start';
+    } else if (normalizedPath.includes('api/v1/stop')) {
+      action = 'stop';
+    } else if (normalizedPath.includes('api/v1/pause')) {
+      action = 'pause';
+    } else if (normalizedPath.includes('api/v1/reload_config')) {
+      action = 'reload_config';
+    }
+    
+    // Apply audit middleware for bot control actions
+    if (action) {
+      auditHelpers.botSystemAction(action)(req, res, next);
+      return;
+    }
+    
+    // For other POST actions, continue without audit
+    next();
+  };
 
   /**
    * @swagger
@@ -1110,7 +1138,10 @@ export function createProxyRouter(): Router {
    *             schema:
    *               $ref: '#/components/schemas/Error'
    */
-  router.post('/:id/proxy/*', requireBotOwnershipOrSuperadmin, async (req: Request, res: Response) => {
+  router.post('/:id/proxy/*', 
+    requireBotOwnershipOrSuperadmin,
+    auditProxyAction,
+    async (req: Request, res: Response) => {
     try {
       // Check rate limit before processing
       const rateLimitCheck = await checkRateLimit(req.params.id, res);

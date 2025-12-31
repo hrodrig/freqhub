@@ -24,6 +24,7 @@ import type { AuditLogDB } from '../db/schema.js';
 export interface AuditLog {
   id: string;
   userId: string;
+  username: string | null; // Username of the user who performed the action
   action: string;
   actionCategory: 'data_change' | 'data_access' | 'system_action' | 'auth';
   resourceType: string;
@@ -56,11 +57,14 @@ export interface CreateAuditLogRequest {
 
 /**
  * Convert AuditLogDB to AuditLog (parses JSON fields)
+ * @param auditLogDB - The audit log database record
+ * @param username - Optional username to include (obtained from JOIN with users table)
  */
-export function auditLogDBToAuditLog(auditLogDB: AuditLogDB): AuditLog {
+export function auditLogDBToAuditLog(auditLogDB: AuditLogDB, username: string | null = null): AuditLog {
   return {
     id: auditLogDB.id,
     userId: auditLogDB.user_id,
+    username,
     action: auditLogDB.action,
     actionCategory: auditLogDB.action_category,
     resourceType: auditLogDB.resource_type,

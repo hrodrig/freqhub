@@ -297,6 +297,13 @@ FreqHub includes a comprehensive Authentication, Authorization, and Audit (AAA) 
 - All data access (viewing bots, configurations, audit logs)
 - All system actions (reload config, refresh, etc.)
 
+**Audit Log Details:**
+- Each audit log entry includes the **username** of the user who performed the action
+- For system actions (start/stop/pause/reload_config), the audit log shows who initiated the action
+- Old and new values are captured for update operations
+- Changed fields are tracked to show exactly what was modified
+- IP address and user agent are logged for security tracking
+
 **Default Superadmin Credentials:**
 When the system starts for the first time (or if no superadmin exists), it automatically creates a superadmin user with:
 - **Username**: `freqhub` (configurable via `DEFAULT_ADMIN_USERNAME` env var)
