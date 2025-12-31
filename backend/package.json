@@ -1,6 +1,6 @@
 {
   "name": "freqhub-backend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "FreqHub Backend - Multi-bot dashboard for Freqtrade",
   "main": "dist/app.js",
   "type": "module",
