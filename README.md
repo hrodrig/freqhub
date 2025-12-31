@@ -6,6 +6,17 @@
 
 **FreqHub** is a modern, multi-bot dashboard for [Freqtrade](https://github.com/freqtrade/freqtrade), designed to monitor and control multiple trading bot instances from a single unified interface. Perfect for Kubernetes deployments and multi-strategy trading setups.
 
+## 📦 Version
+
+**Current Version: 0.2.0**
+
+This version includes:
+- Complete Authentication, Authorization, and Audit (AAA) system
+- Multi-user support with role-based access control (RBAC)
+- Comprehensive audit logging with username identification
+- Frontend authentication and login page
+- User management API
+
 ## ⚠️ Early Development
 
 This project is currently in **early development** (alpha stage) and is not yet ready for production use. Features are being actively developed and the API may change without notice.
