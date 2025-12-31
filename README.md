@@ -66,6 +66,7 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - ✅ **Automatic Superadmin**: System automatically creates default superadmin on first startup
 - ✅ **Protected Routes**: All bot management and proxy routes protected with authentication and authorization
 - ✅ **Audit Middleware**: Automatic audit logging for all actions with old/new value tracking
+- ✅ **User Management API**: Complete CRUD API for user management with bot assignment (Phase 5 complete)
 
 ### Planned Features
 
@@ -320,10 +321,28 @@ When the system starts for the first time (or if no superadmin exists), it autom
 ================================================================================
 ```
 
+### Phase 5: User Management ✅
+
+- **User CRUD**: Complete REST API for user management (only superadmin)
+- **Bot Assignment**: Assign/remove bots to/from users
+- **User Listing**: List all users with their details
+- **Validation**: Username and email uniqueness validation
+- **Password Hashing**: Secure password storage with bcrypt
+- **Audit Logging**: All user management actions are logged
+
+**API Endpoints:**
+- `GET /api/users` - List all users
+- `GET /api/users/:id` - Get user by ID
+- `POST /api/users` - Create new user
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user
+- `POST /api/users/:id/bots/:botId` - Assign bot to user
+- `DELETE /api/users/:id/bots/:botId` - Remove bot from user
+- `GET /api/users/:id/bots` - Get user's assigned bots
+
 ### Planned Phases
 
-- **Phase 5**: User Management UI (CRUD operations for users, assign bots to users)
-- **Phase 6**: Frontend Integration (login page, protected routes, audit log viewer)
+- **Phase 6**: Frontend Integration (login page, protected routes, audit log viewer, user management UI)
 - **Phase 7**: Advanced Security (2FA with TOTP, QR Code authentication, session management)
 
 ## ⚙️ Configuration
