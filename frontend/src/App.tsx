@@ -16,43 +16,120 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { config } from './config/env.js';
+import { AuthProvider, useAuth } from './contexts/AuthContext.js';
+import { PrivateRoute } from './components/PrivateRoute.js';
 import { Dashboard } from './pages/Dashboard.js';
 import { DashboardMock } from './pages/DashboardMock.js';
 import { BotManagement } from './pages/BotManagement.js';
 import { BotDetail } from './pages/BotDetail.js';
 import { BotComparison } from './pages/BotComparison.js';
+import { Login } from './pages/Login.js';
 
-function App() {
+function Navigation() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    // Reload page to trigger lazy loading
+    window.location.reload();
+  };
+
+  return (
+    <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div>
+        <Link to="/dashboard" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+          Dashboard
+        </Link>
+        <Link to="/bots" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+          Bots
+        </Link>
+        <Link to="/compare" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+          Compare
+        </Link>
+        <Link to="/mock" style={{ color: '#e0e0e0', textDecoration: 'none' }}>
+          Mock
+        </Link>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {user && (
+          <span style={{ color: '#a0a0a0', fontSize: '0.875rem' }}>
+            {user.username} ({user.role})
+          </span>
+        )}
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: '0.5rem 1rem',
+            backgroundColor: '#dc2626',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+          }}
+        >
+          Logout
+        </button>
+      </div>
+    </nav>
+  );
+}
+
+function AppRoutes() {
   return (
     <BrowserRouter basename={config.basePath}>
       <div style={{ padding: '20px' }}>
-        <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
-          <Link to="/dashboard" style={{ marginRight: '20px', color: '#e0e0e0' }}>
-            Dashboard
-          </Link>
-          <Link to="/bots" style={{ marginRight: '20px', color: '#e0e0e0' }}>
-            Bots
-          </Link>
-          <Link to="/compare" style={{ marginRight: '20px', color: '#e0e0e0' }}>
-            Compare
-          </Link>
-          <Link to="/mock" style={{ color: '#e0e0e0' }}>
-            Mock
-          </Link>
-        </nav>
+        <PrivateRoute>
+          <Navigation />
+        </PrivateRoute>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/mock" element={<DashboardMock />} />
-          <Route path="/bots" element={<BotManagement />} />
-          <Route path="/bots/:id" element={<BotDetail />} />
-          <Route path="/compare" element={<BotComparison />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={
+            <PrivateRoute>
+              <Navigate to="/dashboard" replace />
+            </PrivateRoute>
+          } />
+          <Route path="/dashboard" element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          } />
+          <Route path="/mock" element={
+            <PrivateRoute>
+              <DashboardMock />
+            </PrivateRoute>
+          } />
+          <Route path="/bots" element={
+            <PrivateRoute>
+              <BotManagement />
+            </PrivateRoute>
+          } />
+          <Route path="/bots/:id" element={
+            <PrivateRoute>
+              <BotDetail />
+            </PrivateRoute>
+          } />
+          <Route path="/compare" element={
+            <PrivateRoute>
+              <BotComparison />
+            </PrivateRoute>
+          } />
           <Route path="*" element={<div>404 - Not Found</div>} />
         </Routes>
       </div>
     </BrowserRouter>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
 }
 

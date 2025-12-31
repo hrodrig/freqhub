@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Edit, Trash2, TestTube, CheckCircle2, XCircle, Loader2, Play, Square, Pause, RotateCcw, Settings, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useBotStore } from '../stores/botStore.js';
@@ -107,9 +107,8 @@ export function BotManagement() {
   };
 
   // Function to load bot statuses (reusable)
-  // If updateProgressively is true, updates are applied as they complete (non-blocking)
   const loadBotStatuses = useCallback(
-    async (specificBotId?: string, updateProgressively: boolean = false) => {
+    async (specificBotId?: string) => {
       const botsToLoad = specificBotId
         ? bots.filter((b) => b.id === specificBotId && b.isEnabled)
         : bots.filter((b) => b.isEnabled);
@@ -218,6 +217,20 @@ export function BotManagement() {
     },
     [bots]
   );
+
+  // Handle individual bot refresh
+  const handleRefreshBot = async (botId: string) => {
+    setActionLoading((prev) => ({ ...prev, [botId]: 'refresh' }));
+    try {
+      await loadBotStatuses(botId);
+    } finally {
+      setActionLoading((prev) => {
+        const next = { ...prev };
+        delete next[botId];
+        return next;
+      });
+    }
+  };
 
   // Load initial statuses only (WebSockets handle real-time updates)
   useEffect(() => {
@@ -484,7 +497,7 @@ export function BotManagement() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingBot(null);
-    setFormData({ name: '', apiUrl: '', username: '', password: '' });
+    setFormData({ name: '', apiUrl: '', username: '', password: '', notes: '', isEnabled: true });
   };
 
   const handleDelete = async (id: string) => {

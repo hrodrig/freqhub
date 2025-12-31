@@ -17,7 +17,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Activity, DollarSign, Bot, CheckCircle2, XCircle, AlertTriangle, Zap, BarChart3, Globe, Layers, ArrowUpDown, ArrowUp, ArrowDown, Calendar, ChevronDown, Play, Square, Trash2, Settings, Plus, X } from 'lucide-react';
+import { TrendingUp, Activity, DollarSign, Bot, CheckCircle2, XCircle, BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Calendar, ChevronDown, Play, Square, Trash2, Settings, Plus, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
@@ -304,7 +304,6 @@ export function DashboardMock() {
   }, [sortField, sortDirection, timePeriod]);
 
   // Pagination
-  const effectiveItemsPerPage = itemsPerPage === 'all' ? sortedBotData.length : itemsPerPage;
   const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(sortedBotData.length / itemsPerPage);
   const startIndex = itemsPerPage === 'all' ? 0 : (currentPage - 1) * itemsPerPage;
   const endIndex = itemsPerPage === 'all' ? sortedBotData.length : startIndex + itemsPerPage;

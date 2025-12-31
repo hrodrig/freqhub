@@ -35,7 +35,7 @@ interface BotStore {
   clearError: () => void;
 }
 
-export const useBotStore = create<BotStore>((set, get) => ({
+export const useBotStore = create<BotStore>((set) => ({
   bots: [],
   selectedBotId: null,
   isLoading: false,

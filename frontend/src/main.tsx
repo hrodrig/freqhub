@@ -18,12 +18,40 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.js';
 import './index.css';
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// Check if user is authenticated
+const token = localStorage.getItem('auth_token');
+const isAuthenticated = !!token;
+
+const root = ReactDOM.createRoot(document.getElementById('root')!);
+
+if (!isAuthenticated) {
+  // Load only login page (lazy load) - but still need AuthProvider and Router
+  Promise.all([
+    import('./pages/Login.js'),
+    import('./contexts/AuthContext.js'),
+    import('react-router-dom'),
+    import('./config/env.js')
+  ]).then(([{ Login }, { AuthProvider }, { BrowserRouter }, { config }]) => {
+    root.render(
+      <React.StrictMode>
+        <BrowserRouter basename={config.basePath}>
+          <AuthProvider>
+            <Login />
+          </AuthProvider>
+        </BrowserRouter>
+      </React.StrictMode>
+    );
+  });
+} else {
+  // Load full application (lazy load)
+  import('./App.js').then(({ default: App }) => {
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  });
+}
 
