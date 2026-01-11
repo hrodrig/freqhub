@@ -19,7 +19,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { login, logout, changePassword } from '../services/authService.js';
-import { getUserById } from '../services/userService.js';
+import { getUserById, updateUser } from '../services/userService.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { appLogger } from '../utils/logger.js';
 
@@ -160,6 +160,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
     res.json({
       id: user.id,
       username: user.username,
+      name: user.name,
       email: user.email,
       role: user.role,
       isActive: user.isActive,
@@ -171,6 +172,102 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
   } catch (error) {
     appLogger.error('Get current user error:', error);
     res.status(500).json({ error: 'Failed to get user information' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   put:
+ *     summary: Update current user profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       401:
+ *         description: Unauthorized or invalid current password
+ */
+router.put('/profile', authenticate, async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const updateSchema = z.object({
+      name: z.string().max(100).nullable().optional(),
+      currentPassword: z.string().optional(),
+      newPassword: z.string().min(8).optional(),
+    });
+
+    const body = updateSchema.parse(req.body);
+    const ipAddress = req.ip || req.socket.remoteAddress || undefined;
+    const userAgent = req.get('user-agent') || undefined;
+
+    // If password is being changed, validate current password
+    if (body.newPassword) {
+      if (!body.currentPassword) {
+        res.status(400).json({ error: 'Current password is required to change password' });
+        return;
+      }
+      await changePassword(
+        req.user.id,
+        body.currentPassword,
+        body.newPassword,
+        ipAddress,
+        userAgent
+      );
+    }
+
+    // Update name if provided
+    if (body.name !== undefined) {
+      updateUser(req.user.id, { name: body.name }, req.user.id);
+    }
+
+    // Get updated user
+    const user = getUserById(req.user.id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    res.json({
+      id: user.id,
+      username: user.username,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      totpEnabled: user.totpEnabled,
+      mustChangePassword: user.mustChangePassword,
+      lastLogin: user.lastLogin,
+      createdAt: user.createdAt,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Invalid request', details: error.errors });
+      return;
+    }
+
+    appLogger.error('Update profile error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to update profile';
+    const statusCode = message.includes('incorrect') || message.includes('not found') ? 401 : 500;
+    res.status(statusCode).json({ error: message });
   }
 });
 

@@ -22,6 +22,7 @@ import { apiClient } from '../services/api/client.js';
 export interface User {
   id: string;
   username: string;
+  name: string | null; // Display name (optional)
   email: string;
   role: 'superadmin' | 'auditor' | 'user';
   mustChangePassword: boolean;

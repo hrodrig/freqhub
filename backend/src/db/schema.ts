@@ -66,6 +66,7 @@ export const createBotsTable = `
 export interface UserDB {
   id: string;
   username: string;
+  name: string | null; // Display name (optional)
   email: string;
   password_hash: string;
   role: 'superadmin' | 'auditor' | 'user';

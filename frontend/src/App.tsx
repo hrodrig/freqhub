@@ -27,6 +27,8 @@ import { BotDetail } from './pages/BotDetail.js';
 import { BotComparison } from './pages/BotComparison.js';
 import { Login } from './pages/Login.js';
 import { AuditLogs } from './pages/AuditLogs.js';
+import { Profile } from './pages/Profile.js';
+import { UserManagement } from './pages/UserManagement.js';
 
 function Navigation() {
   const { user, logout } = useAuth();
@@ -56,15 +58,39 @@ function Navigation() {
             Audit Logs
           </Link>
         )}
+        {user?.role === 'superadmin' && (
+          <Link to="/users" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+            Users
+          </Link>
+        )}
         <Link to="/mock" style={{ color: '#e0e0e0', textDecoration: 'none' }}>
           Mock
         </Link>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         {user && (
-          <span style={{ color: '#a0a0a0', fontSize: '0.875rem' }}>
-            {user.username} ({user.role})
-          </span>
+          <Link
+            to="/profile"
+            style={{
+              color: '#a0a0a0',
+              fontSize: '0.875rem',
+              textDecoration: 'none',
+              cursor: 'pointer',
+              padding: '0.25rem 0.5rem',
+              borderRadius: '4px',
+              transition: 'background-color 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#3a3a3a';
+              e.currentTarget.style.color = '#e0e0e0';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = '#a0a0a0';
+            }}
+          >
+            {user.name || user.username} ({user.role})
+          </Link>
         )}
         <button
           onClick={handleLogout}
@@ -127,6 +153,16 @@ function AppRoutes() {
           <Route path="/audit" element={
             <PrivateRoute requiredRole="auditor">
               <AuditLogs />
+            </PrivateRoute>
+          } />
+          <Route path="/profile" element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          } />
+          <Route path="/users" element={
+            <PrivateRoute requiredRole="superadmin">
+              <UserManagement />
             </PrivateRoute>
           } />
           <Route path="*" element={<div>404 - Not Found</div>} />

@@ -92,6 +92,13 @@ function applyMigrations(db: Database.Database): void {
           if (!hasUpdatedBy) {
             db.exec('ALTER TABLE bots ADD COLUMN updated_by TEXT');
           }
+        } else if (migrationFile === '007_add_name_to_users.sql') {
+          const tableInfo = db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+          const hasName = tableInfo.some(col => col.name === 'name');
+          
+          if (!hasName) {
+            db.exec('ALTER TABLE users ADD COLUMN name TEXT');
+          }
         } else {
           // Execute migration SQL
           db.exec(migrationSql);

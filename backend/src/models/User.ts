@@ -24,6 +24,7 @@ import type { UserDB } from '../db/schema.js';
 export interface User {
   id: string;
   username: string;
+  name: string | null; // Display name (optional)
   email: string;
   role: 'superadmin' | 'auditor' | 'user';
   isActive: boolean;
@@ -43,6 +44,7 @@ export interface User {
  */
 export interface CreateUserRequest {
   username: string;
+  name?: string | null; // Display name (optional)
   email: string;
   password: string;
   role?: 'superadmin' | 'auditor' | 'user';
@@ -55,6 +57,7 @@ export interface CreateUserRequest {
  */
 export interface UpdateUserRequest {
   username?: string;
+  name?: string | null; // Display name (optional)
   email?: string;
   password?: string; // If provided, will be hashed
   role?: 'superadmin' | 'auditor' | 'user';
@@ -69,6 +72,7 @@ export function userDBToUser(userDB: UserDB): User {
   return {
     id: userDB.id,
     username: userDB.username,
+    name: userDB.name,
     email: userDB.email,
     role: userDB.role,
     isActive: userDB.is_active === 1,
@@ -92,6 +96,7 @@ export function userToUserDB(user: Partial<User>): Partial<UserDB> {
   
   if (user.id !== undefined) userDB.id = user.id;
   if (user.username !== undefined) userDB.username = user.username;
+  if (user.name !== undefined) userDB.name = user.name;
   if (user.email !== undefined) userDB.email = user.email;
   if (user.role !== undefined) userDB.role = user.role;
   if (user.isActive !== undefined) userDB.is_active = user.isActive ? 1 : 0;

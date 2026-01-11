@@ -26,7 +26,7 @@
 
 ## 📦 Version
 
-**Current Version: 0.2.0**
+**Current Version: 0.2.4**
 
 This version includes:
 - Complete Authentication, Authorization, and Audit (AAA) system
@@ -34,6 +34,8 @@ This version includes:
 - Comprehensive audit logging with username identification
 - Frontend authentication and login page
 - User management API
+- User profile page with display name and password change
+- Display name (name) field for users
 
 ## ⚠️ Early Development
 
@@ -268,8 +270,8 @@ docker-compose -f docker-compose.full.yml up -d
 docker-compose -f docker-compose.published.yml up -d
 
 # Or with custom image tags
-FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.0 \
-FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.0 \
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.4 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.4 \
 docker-compose -f docker-compose.published.yml up -d
 ```
 

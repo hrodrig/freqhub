@@ -78,6 +78,7 @@ export function createUser(request: CreateUserRequest, createdBy: string | null 
   const userDB: UserDB = {
     id,
     username: request.username,
+    name: request.name || null,
     email: request.email,
     password_hash: request.password, // Caller should provide hashed password
     role: request.role || 'user',
@@ -98,14 +99,15 @@ export function createUser(request: CreateUserRequest, createdBy: string | null 
   
   db.prepare(`
     INSERT INTO users (
-      id, username, email, password_hash, role, is_active,
+      id, username, name, email, password_hash, role, is_active,
       totp_secret, totp_enabled, failed_login_attempts, account_locked_until,
       last_login, last_login_ip, last_login_device, password_changed_at,
       must_change_password, created_at, updated_at, created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     userDB.id,
     userDB.username,
+    userDB.name,
     userDB.email,
     userDB.password_hash,
     userDB.role,
@@ -144,6 +146,10 @@ export function updateUser(id: string, request: UpdateUserRequest, updatedBy: st
     updates.push('username = ?');
     values.push(request.username);
   }
+  if (request.name !== undefined) {
+    updates.push('name = ?');
+    values.push(request.name);
+  }
   if (request.email !== undefined) {
     updates.push('email = ?');
     values.push(request.email);
@@ -175,10 +181,8 @@ export function updateUser(id: string, request: UpdateUserRequest, updatedBy: st
   updates.push('updated_at = ?');
   values.push(Date.now());
   
-  if (updatedBy !== null) {
-    updates.push('updated_by = ?');
-    values.push(updatedBy);
-  }
+  // Note: users table doesn't have updated_by column (only bots table has it)
+  // If we want to track who updated a user, we should add it via migration
   
   values.push(id);
   
