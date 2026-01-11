@@ -24,6 +24,9 @@ RUN npm install --only=production
 # Copy built files
 COPY --from=builder /app/dist ./dist
 
+# Copy migrations directory (SQL files are not compiled, need to be copied separately)
+COPY --from=builder /app/src/db/migrations ./dist/db/migrations
+
 # Create data directory
 RUN mkdir -p /app/data
 
