@@ -5,16 +5,8 @@ server {
     index        index.html;
 
     # Base path configuration
-    location ${BASE_PATH} {
-        alias /usr/share/nginx/html/;
-        try_files $uri $uri/ ${BASE_PATH}index.html;
-    }
-
-    # If BASE_PATH is set and not root, redirect root to base path
-    location = / {
-        if ($BASE_PATH != "/") {
-            return 301 ${BASE_PATH};
-        }
+    # For root path, use simple location
+    location / {
         try_files $uri $uri/ /index.html;
     }
 
