@@ -135,9 +135,9 @@ export function UserManagement() {
     try {
       if (editingUser) {
         // Update user
-        const updateData: Partial<UserFormData & { name: string | null }> = {
+        const updateData: Omit<Partial<UserFormData>, 'name'> & { name?: string | null } = {
           username: formData.username,
-          name: formData.name || null, // Convert empty string to null
+          name: formData.name && formData.name.trim() ? formData.name : null, // Convert empty string to null
           email: formData.email,
           role: formData.role,
           isActive: formData.isActive,
@@ -160,7 +160,7 @@ export function UserManagement() {
 
         const createData = {
           ...formData,
-          name: formData.name || null, // Convert empty string to null
+          name: formData.name && formData.name.trim() ? formData.name : null, // Convert empty string to null
         };
         await apiClient.post('/users', createData);
       }
