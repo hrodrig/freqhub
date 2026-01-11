@@ -11,10 +11,14 @@ COPY frontend/ ./
 
 # Build arguments
 ARG VITE_BASE_PATH=/
-ARG VITE_API_PROXY_TARGET=http://localhost:3001
+# VITE_API_PROXY_TARGET is optional - if not set, will use relative URL in production
+# For development builds, you can pass: --build-arg VITE_API_PROXY_TARGET=http://localhost:3001
+ARG VITE_API_PROXY_TARGET=
 
 # Set environment variables
 ENV VITE_BASE_PATH=${VITE_BASE_PATH}
+# Only set VITE_API_PROXY_TARGET if it's provided (non-empty)
+# This allows the code to use import.meta.env.PROD fallback
 ENV VITE_API_PROXY_TARGET=${VITE_API_PROXY_TARGET}
 
 # Build

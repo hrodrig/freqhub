@@ -60,7 +60,9 @@ services:
       dockerfile: ./docker/Dockerfile.frontend
       args:
         - VITE_BASE_PATH=${BASE_PATH:-/}
-        - VITE_API_PROXY_TARGET=${VITE_API_PROXY_TARGET:-http://localhost:3001}
+        # VITE_API_PROXY_TARGET is optional - if not set, will use relative URL (Nginx will proxy)
+        # Only set if you need a custom backend URL
+        - VITE_API_PROXY_TARGET=${VITE_API_PROXY_TARGET:-}
     container_name: freqhub-frontend
     ports:
       - "3000:80"
