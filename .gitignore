@@ -141,6 +141,7 @@ lerna-debug.log*
 !Dockerfile
 !docker-compose.yml
 !docker-compose.full.yml
+!docker-compose.published.yml
 !.dockerignore
 !docker/
 !docker/**/*

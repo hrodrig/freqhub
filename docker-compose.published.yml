@@ -1,0 +1,213 @@
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# ⚖️ DISCLAIMER
+# USE AT YOUR OWN RISK
+#
+# This software is provided "as is", without warranty of any kind, express or implied,
+# including but not limited to the warranties of merchantability, fitness for a particular
+# purpose and noninfringement. In no event shall the authors or copyright holders be liable
+# for any claim, damages or other liability, whether in an action of contract, tort or
+# otherwise, arising from, out of or in connection with the software or the use or other
+# dealings in the software.
+#
+# Trading cryptocurrencies involves substantial risk of loss and is not suitable for every
+# investor. The value of cryptocurrencies may fluctuate, and you may lose some or all of
+# your investment. Past performance is not indicative of future results.
+#
+# Docker Compose using published Docker images from Docker Hub
+# This file uses pre-built images from Docker Hub instead of building locally
+#
+# To use this file:
+#   docker-compose -f docker-compose.published.yml up -d
+#
+# Image tags can be customized via environment variables:
+#   FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:latest
+#   FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:latest
+# Example:
+#   FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.0
+#   FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.0
+#   docker-compose -f docker-compose.published.yml up -d
+
+services:
+  # Valkey Cache (Redis-compatible)
+  valkey:
+    image: valkey/valkey:7.2
+    container_name: freqhub-valkey
+    ports:
+      - "${VALKEY_PORT:-6379}:6379"
+    volumes:
+      - ./backend/data:/data
+    command: valkey-server --appendonly yes
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # FreqHub Backend (using published image)
+  backend:
+    image: ${FREQHUB_BACKEND_IMAGE:-freqhub/freqhub-backend:latest}
+    container_name: freqhub-backend
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_PATH=/app/data/freqhub.db
+      # Override Valkey host for Docker Compose (use service name)
+      - VALKEY_HOST=valkey
+    volumes:
+      - ./backend/data:/app/data
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    depends_on:
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # FreqHub Frontend (using published image)
+  frontend:
+    image: ${FREQHUB_FRONTEND_IMAGE:-freqhub/freqhub-frontend:latest}
+    container_name: freqhub-frontend
+    ports:
+      - "3000:80"
+    environment:
+      - BASE_PATH=${BASE_PATH:-/}
+    volumes:
+      - ./docker/nginx.conf.docker-compose:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # Freqtrade Instance 1
+  freqtrade-1:
+    image: freqtradeorg/freqtrade:stable
+    container_name: freqtrade-1
+    volumes:
+      - ./examples/docker/freqtrade-data-1:/freqtrade/user_data
+    ports:
+      - "8080:8080"
+    environment:
+      - FREQTRADE__API_SERVER__ENABLED=true
+      - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
+      - FREQTRADE__API_SERVER__LISTEN_PORT=8080
+      - FREQTRADE__API_SERVER__USERNAME=${FREQTRADE_USERNAME:-freqtrader}
+      - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_1:-SuperSecret1!}
+      - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
+      - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+      - FREQTRADE__DRY_RUN=true
+      - FREQTRADE__DRY_RUN_WALLET=1000
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy SampleStrategy
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Freqtrade Instance 2 (for multi-bot testing)
+  freqtrade-2:
+    image: freqtradeorg/freqtrade:stable
+    container_name: freqtrade-2
+    volumes:
+      - ./examples/docker/freqtrade-data-2:/freqtrade/user_data
+    ports:
+      - "8081:8080"
+    environment:
+      - FREQTRADE__API_SERVER__ENABLED=true
+      - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
+      - FREQTRADE__API_SERVER__LISTEN_PORT=8080
+      - FREQTRADE__API_SERVER__USERNAME=${FREQTRADE_USERNAME:-freqtrader}
+      - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_2:-SuperSecret2!}
+      - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
+      - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+      - FREQTRADE__DRY_RUN=true
+      - FREQTRADE__DRY_RUN_WALLET=1000
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy SampleStrategy
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Freqtrade Instance 3 (disabled in example DB, but available for testing)
+  freqtrade-3:
+    image: freqtradeorg/freqtrade:stable
+    container_name: freqtrade-3
+    volumes:
+      - ./examples/docker/freqtrade-data-3:/freqtrade/user_data
+    ports:
+      - "8082:8080"
+    environment:
+      - FREQTRADE__API_SERVER__ENABLED=true
+      - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
+      - FREQTRADE__API_SERVER__LISTEN_PORT=8080
+      - FREQTRADE__API_SERVER__USERNAME=${FREQTRADE_USERNAME:-freqtrader}
+      - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_3:-SuperSecret3!}
+      - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
+      - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
+      - FREQTRADE__DRY_RUN=true
+      - FREQTRADE__DRY_RUN_WALLET=1000
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy SampleStrategy
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  freqhub-network:
+    driver: bridge

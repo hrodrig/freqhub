@@ -222,17 +222,30 @@ npm run build
 
 **With Makefile:**
 ```bash
-make docker-up      # Start all services
+make docker-up      # Start all services (builds images locally)
 make docker-down    # Stop all services
 make docker-logs    # View logs
 make docker-build   # Build images
 ```
 
-**Manual:**
+**Manual - Build from source:**
 ```bash
-# Build and run with docker-compose
+# Build and run with docker-compose (builds images locally)
 docker-compose -f docker-compose.full.yml up -d
 ```
+
+**Using published images from Docker Hub:**
+```bash
+# Use pre-built images from Docker Hub (faster, no build required)
+docker-compose -f docker-compose.published.yml up -d
+
+# Or with custom image tags
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.0 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.0 \
+docker-compose -f docker-compose.published.yml up -d
+```
+
+**Note**: `docker-compose.published.yml` uses pre-built images from Docker Hub. You can customize the image tags using environment variables if needed.
 
 ### Valkey Cache Setup (Optional but Recommended)
 
