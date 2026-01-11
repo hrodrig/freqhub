@@ -22,6 +22,8 @@
 
 export const config = {
   basePath: import.meta.env.BASE_URL || '/',
-  apiUrl: import.meta.env.VITE_API_PROXY_TARGET || 'http://localhost:3001',
+  // Use relative URL if VITE_API_PROXY_TARGET is not set (Nginx will proxy to backend)
+  // Otherwise use the configured URL (for development or custom setups)
+  apiUrl: import.meta.env.VITE_API_PROXY_TARGET || '',
 };
 

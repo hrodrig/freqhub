@@ -4,6 +4,34 @@ server {
     root         /usr/share/nginx/html;
     index        index.html;
 
+    # Proxy API requests to backend
+    # In Kubernetes, use the service name: http://freqhub-backend:3001
+    # For Docker Compose, use: http://freqhub-backend:3001
+    # For local development, use: http://localhost:3001
+    location /api {
+        proxy_pass http://freqhub-backend:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Proxy WebSocket connections (Socket.io)
+    location /socket.io {
+        proxy_pass http://freqhub-backend:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # Base path configuration
     # For root path, use simple location
     location / {
