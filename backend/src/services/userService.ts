@@ -132,7 +132,7 @@ export function createUser(request: CreateUserRequest, createdBy: string | null 
 /**
  * Update user
  */
-export function updateUser(id: string, request: UpdateUserRequest, updatedBy: string | null = null): User | null {
+export function updateUser(id: string, request: UpdateUserRequest, _updatedBy: string | null = null): User | null {
   const db = getDatabase();
   const existing = getUserById(id);
   if (!existing) {
