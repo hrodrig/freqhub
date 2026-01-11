@@ -1,6 +1,38 @@
+/*
+ * FreqHub - Multi-bot dashboard for Freqtrade
+ * Copyright (C) 2025 - 2026  FreqHub Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 # FreqHub Makefile
 # Inspired by NautilusTrader's automation approach
 # Provides simple commands for common development tasks
+#
+# ⚖️ DISCLAIMER
+# USE AT YOUR OWN RISK
+#
+# This software is provided "as is", without warranty of any kind, express or implied,
+# including but not limited to the warranties of merchantability, fitness for a particular
+# purpose and noninfringement. In no event shall the authors or copyright holders be liable
+# for any claim, damages or other liability, whether in an action of contract, tort or
+# otherwise, arising from, out of or in connection with the software or the use or other
+# dealings in the software.
+#
+# Trading cryptocurrencies involves substantial risk of loss and is not suitable for every
+# investor. The value of cryptocurrencies may fluctuate, and you may lose some or all of
+# your investment. Past performance is not indicative of future results.
 
 .PHONY: help install setup dev build test lint format clean docker-up docker-down docker-build docker-logs db-migrate db-seed db-example test-websocket test-polling
 

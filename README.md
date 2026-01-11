@@ -1,3 +1,21 @@
+/*
+ * FreqHub - Multi-bot dashboard for Freqtrade
+ * Copyright (C) 2025 - 2026  FreqHub Contributors
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 # FreqHub
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -142,6 +160,13 @@ cd backend
 cp .env.example .env
 # Edit .env with your configuration
 npm install  # or pnpm install / yarn install
+```
+
+**⚠️ Important: Environment Configuration**
+
+For consistent behavior between local development and Docker Compose, ensure you use the **same `ENCRYPTION_KEY`** in both environments. See [ENV_SETUP.md](ENV_SETUP.md) for detailed configuration instructions.
+
+```bash
 
 # Option 1: Use the example database (recommended for first-time setup)
 cp data/freqhub.db.example data/freqhub.db
@@ -628,7 +653,7 @@ cd backend
 2. Click "Add Bot"
 3. Enter:
    - Bot name (e.g., "EMAC-RSI-EMA200" - typically the strategy name)
-   - Freqtrade API URL (e.g., `http://freqtrade-pod-1:8080`)
+   - Freqtrade API URL (see [Configuration Guide](#bot-configuration-guide) below)
    - Username
    - Password
    - Notes (optional): Add custom notes about the bot's configuration, strategy, or purpose
@@ -637,6 +662,45 @@ cd backend
 6. Bot is added and ready to use
 
 **Note**: Each bot displays its UUID below the name for easy identification and debugging when matching with backend logs.
+
+### Bot Configuration Guide
+
+**⚠️ IMPORTANT**: The API URL format depends on **where FreqHub backend is running**, not where Freqtrade is running. Pay special attention to service names and ports.
+
+#### Understanding Ports
+
+Each Freqtrade instance:
+- **Internal port**: Always `8080` (the port Freqtrade listens on inside the container)
+- **Exposed port**: May vary (8080, 8081, 8082, etc.) - this is the port mapped to your host machine (only relevant for local development)
+
+#### API URL by Deployment Mode
+
+| FreqHub Backend Location | Freqtrade Location | API URL Format | Port to Use | Example |
+|--------------------------|-------------------|----------------|-------------|---------|
+| **Local Development** (`npm run dev`) | Docker containers | `http://localhost:XXXX` | Exposed port (8080, 8081, 8082) | `http://localhost:8080` |
+| **Docker Compose** | Docker Compose (same network) | `http://<service-name>:8080` | Internal port (8080) | `http://freqtrade-1:8080` |
+| **Kubernetes** | Kubernetes pods | `http://<k8s-service>:8080` | Internal port (8080) | `http://freqtrade-bollinger-ema200:8080` |
+
+#### Common Mistakes to Avoid
+
+1. ❌ **Using exposed port in Docker Compose**: `http://freqtrade-2:8081` (WRONG - use 8080)
+2. ❌ **Using localhost in Docker**: `http://localhost:8080` when FreqHub is in Docker (WRONG - use service name)
+3. ❌ **Wrong service name**: Check your `docker-compose.yml` or `kubectl get svc` for the exact service name
+4. ❌ **Wrong password**: Ensure the password matches what's configured in Freqtrade's `config.json` or environment variables
+
+#### Verification Checklist
+
+Before adding a bot, verify:
+- [ ] API URL format matches your deployment mode (see table above)
+- [ ] Service name is correct (check `docker-compose.yml` or `kubectl get svc`)
+- [ ] Port is `8080` when using Docker/Kubernetes (internal container port)
+- [ ] Port matches exposed port when FreqHub is running locally
+- [ ] Username matches Freqtrade configuration
+- [ ] Password matches Freqtrade configuration (check `config.json` or environment variables)
+
+For detailed examples, see:
+- [Docker Compose Examples](examples/docker/README.md#important-api-url-configuration-by-deployment-mode)
+- [Kubernetes Examples](examples/kubernetes/README.md#important-api-url-configuration---service-names-and-ports)
 
 ### Dashboard View
 

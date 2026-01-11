@@ -226,13 +226,64 @@ Once the instances are running and you're logged in, you can add them in FreqHub
 
 **⚠️ Important - URL Format:**
 
-The API URL depends on your deployment scenario:
+## ⚠️ IMPORTANT: API URL Configuration by Deployment Mode
 
-- **Local Development** (FreqHub running locally, Freqtrade in Docker): Use `http://localhost:8080`
-- **Docker Compose** (both FreqHub and Freqtrade in Docker): Use Docker service names like `http://freqtrade-bot-1:8080`
-- **Kubernetes**: Use Kubernetes service names like `http://freqtrade-service-name:8080`
+**CRITICAL**: The API URL you use depends on **where FreqHub backend is running**, not where Freqtrade is running. Pay special attention to service names and ports.
 
-**Note**: When FreqHub backend runs inside Docker/Kubernetes, it needs to connect to Freqtrade using service names (not `localhost`), as `localhost` refers to the container itself.
+### Understanding Ports
+
+Each Freqtrade container:
+- **Internal port**: Always `8080` (the port Freqtrade listens on inside the container)
+- **Exposed port**: May vary (8080, 8081, 8082, etc.) - this is the port mapped to your host machine
+
+### API URL by Deployment Scenario
+
+#### Scenario 1: FreqHub Running Locally (Development)
+**FreqHub backend**: Running on your machine (`npm run dev`)  
+**Freqtrade**: Running in Docker containers
+
+- Use `localhost` with the **exposed port**:
+  - Bot 1: `http://localhost:8080`
+  - Bot 2: `http://localhost:8081`
+  - Bot 3: `http://localhost:8082`
+
+#### Scenario 2: Both FreqHub and Freqtrade in Docker Compose
+**FreqHub backend**: Running in Docker container  
+**Freqtrade**: Running in Docker containers (same network)
+
+- Use **Docker service name** with the **internal port** (always `8080`):
+  - Bot 1: `http://freqtrade-1:8080` (or `http://freqtrade-bot-1:8080` depending on service name)
+  - Bot 2: `http://freqtrade-2:8080` (or `http://freqtrade-bot-2:8080`)
+  - Bot 3: `http://freqtrade-3:8080` (or `http://freqtrade-bot-3:8080`)
+
+**⚠️ Important**: 
+- Use the **service name** from `docker-compose.yml`, not `localhost`
+- Always use port `8080` (internal container port), NOT the exposed port (8081, 8082, etc.)
+- The exposed ports (8081, 8082) are only for accessing from your host machine
+
+#### Scenario 3: Kubernetes Deployment
+**FreqHub backend**: Running in Kubernetes pod  
+**Freqtrade**: Running in Kubernetes pods
+
+- Use **Kubernetes service name** with the **internal port**:
+  - Bot 1: `http://freqtrade-service-1:8080`
+  - Bot 2: `http://freqtrade-service-2:8080`
+  - Bot 3: `http://freqtrade-service-3:8080`
+
+### Quick Reference Table
+
+| FreqHub Location | Freqtrade Location | API URL Format | Port to Use |
+|-------------------|---------------------|----------------|-------------|
+| Local (dev) | Docker | `http://localhost:XXXX` | Exposed port (8080, 8081, 8082) |
+| Docker Compose | Docker Compose | `http://<service-name>:8080` | Internal port (8080) |
+| Kubernetes | Kubernetes | `http://<k8s-service>:8080` | Internal port (8080) |
+
+### Common Mistakes to Avoid
+
+1. ❌ **Using exposed port in Docker Compose**: `http://freqtrade-2:8081` (WRONG - use 8080)
+2. ❌ **Using localhost in Docker**: `http://localhost:8080` when FreqHub is in Docker (WRONG - use service name)
+3. ❌ **Wrong service name**: Check your `docker-compose.yml` for the exact service name
+4. ❌ **Wrong password**: Ensure the password matches what's configured in Freqtrade's `config.json` or environment variables
 
 ### Bot 1
 - **Name**: `Freqtrade Bot 1`

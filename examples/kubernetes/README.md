@@ -281,6 +281,47 @@ Once deployed and logged in, access FreqHub and add your bots:
 
 **Note**: Since everything is in the `main` namespace, you can use simple service names without namespace prefix (e.g., `http://freqtrade-bollinger-ema200:8080`).
 
+## ⚠️ IMPORTANT: API URL Configuration - Service Names and Ports
+
+**CRITICAL**: Pay special attention to service names and ports when configuring bots in FreqHub.
+
+### Understanding Ports in Kubernetes
+
+Each Freqtrade pod:
+- **Container port**: Always `8080` (the port Freqtrade listens on inside the container)
+- **Service port**: Usually `8080` (the port exposed by the Kubernetes Service)
+
+### Common Mistakes to Avoid
+
+1. ❌ **Using wrong service name**: Check your Kubernetes Services with `kubectl get svc -n main` to get the exact service name
+2. ❌ **Using wrong port**: Always use port `8080` (the container port), not any NodePort or LoadBalancer port
+3. ❌ **Using localhost**: Never use `localhost` when FreqHub is running in Kubernetes - use the Kubernetes service name
+4. ❌ **Wrong password**: Ensure the password matches what's configured in Freqtrade's `config.json` or environment variables
+5. ❌ **Wrong namespace**: If services are in different namespaces, use the full format: `http://<service-name>.<namespace>:8080`
+
+### How to Find the Correct Service Name
+
+```bash
+# List all services in the main namespace
+kubectl get svc -n main
+
+# Example output:
+# NAME                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+# freqtrade-bollinger-ema200   ClusterIP   10.152.183.45   <none>        8080/TCP   5d
+# freqtrade-rsi-momentum      ClusterIP   10.152.183.46   <none>        8080/TCP   5d
+
+# Use the NAME column in your API URL: http://freqtrade-bollinger-ema200:8080
+```
+
+### Verification Checklist
+
+Before adding a bot in FreqHub, verify:
+- [ ] Service name is correct (check with `kubectl get svc`)
+- [ ] Port is `8080` (container port)
+- [ ] Username matches Freqtrade configuration
+- [ ] Password matches Freqtrade configuration (check `config.json` or environment variables)
+- [ ] Service is in the same namespace as FreqHub (or use full namespace format)
+
 ## Verify Deployment
 
 ```bash

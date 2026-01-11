@@ -5,11 +5,9 @@ server {
     index        index.html;
 
     # Proxy API requests to backend
-    # Default: http://localhost:3001 (local development)
-    # For Docker Compose: mount nginx.conf.docker-compose as volume to override
-    # For Kubernetes: use frontend-nginx-configmap.yaml which points to freqhub-backend:3001
+    # For Docker Compose, use the service name: http://backend:3001
     location /api {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://backend:3001;
         proxy_http_version 1.1;
         
         # Timeouts (increased for reliability)
@@ -33,7 +31,7 @@ server {
 
     # Proxy WebSocket connections (Socket.io)
     location /socket.io {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://backend:3001;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -55,4 +53,3 @@ server {
     gzip_min_length 1024;
     gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
 }
-
