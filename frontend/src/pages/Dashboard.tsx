@@ -239,12 +239,10 @@ export function Dashboard() {
     try {
       const response = await proxyApi.post(botId, `api/v1/${action}`, {});
       
-      // Show success message if Freqtrade returned a status message
+        // Show success message if Freqtrade returned a status message
       if (response && typeof response === 'object' && 'status' in response) {
         const statusMessage = (response as { status?: string }).status;
         if (statusMessage) {
-          // Log success for all actions
-          console.log(`✅ ${action} successful for bot ${botId}: ${statusMessage}`);
           // For reload_config, show a brief visual feedback
           if (action === 'reload_config') {
             // The status will be updated automatically via loadBotStatuses
@@ -288,8 +286,6 @@ export function Dashboard() {
   useEffect(() => {
     const handleBotEvent = (event: FreqHubEvent) => {
       if (!event.botId) return;
-
-      console.log('[Dashboard] Received bot event:', event.type, 'for bot:', event.botId);
 
       // Handle different event types
       if (event.type === 'bot_open_trades_update') {
@@ -350,13 +346,11 @@ export function Dashboard() {
         }
       } else if (event.type === 'bot_offline') {
         // Bot went offline - update status
-        console.log('[Dashboard] Bot went offline:', event.botId, event.data);
         const offlineData = event.data as { error?: string };
         setBotStatuses((prev) => {
           const existing = prev.find((s) => s.botId === event.botId);
-          console.log('[Dashboard] Existing status for bot:', existing);
           if (existing) {
-            const updated = prev.map((s) =>
+            return prev.map((s) =>
               s.botId === event.botId
                 ? {
                     ...s,
@@ -366,23 +360,18 @@ export function Dashboard() {
                   }
                 : s
             );
-            console.log('[Dashboard] Updated statuses:', updated);
-            return updated;
           } else {
-            const newStatus = [...prev, {
+            return [...prev, {
               botId: event.botId!,
               status: null,
               isOnline: false,
               error: offlineData.error || 'Bot is offline or unreachable',
             }];
-            console.log('[Dashboard] Added new offline status:', newStatus);
-            return newStatus;
           }
         });
       } else if (event.type === 'bot_balance_update') {
         // Balance updates don't contain profit, but we could refresh profit if needed
         // For now, we'll keep the existing profit
-        console.log('[Dashboard] Balance update for bot:', event.botId);
       } else if (event.type === 'bot_state_update') {
         // State updates from /api/v1/show_config endpoint
         const stateData = event.data as {

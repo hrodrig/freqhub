@@ -413,7 +413,7 @@ export function BotManagement() {
       if (response && typeof response === 'object' && 'status' in response) {
         const statusMessage = (response as { status?: string }).status;
         if (statusMessage && action === 'reload_config') {
-          console.log(`✅ ${action} successful: ${statusMessage}`);
+          // Status will be updated automatically via refresh
         }
       }
       

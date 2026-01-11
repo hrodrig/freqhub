@@ -68,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(response.data);
       setToken(tokenToVerify);
     } catch (error) {
+      console.error('Token verification failed:', error);
       // Token invalid, remove it
       localStorage.removeItem(TOKEN_KEY);
       setToken(null);
@@ -84,10 +85,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
 
-      console.log('Login response:', response);
-      console.log('Response data:', response.data);
-      console.log('Response status:', response.status);
-
       if (!response.data || !response.data.token || !response.data.user) {
         console.error('Invalid response structure:', response.data);
         throw new Error('Invalid response from server');
@@ -102,7 +99,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Login error:', error);
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { data?: { error?: string } } };
-        console.error('Axios error response:', axiosError.response);
         throw new Error(axiosError.response?.data?.error || 'Login failed');
       }
       throw new Error('Login failed');

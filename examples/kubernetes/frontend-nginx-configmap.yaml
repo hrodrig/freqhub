@@ -1,0 +1,81 @@
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: freqhub-frontend-nginx-config
+  namespace: main
+  labels:
+    app: freqhub
+    component: frontend
+data:
+  default.conf: |
+    server {
+        listen       80;
+        server_name  localhost;
+        root         /usr/share/nginx/html;
+        index        index.html;
+
+        # Proxy API requests to backend
+        # In Kubernetes, use the service name: http://freqhub-backend:3001
+        location /api {
+            proxy_pass http://freqhub-backend:3001;
+            proxy_http_version 1.1;
+            
+            # Timeouts (increased for reliability)
+            proxy_connect_timeout 10s;
+            proxy_send_timeout 60s;
+            proxy_read_timeout 60s;
+            
+            # Buffers - disable to stream responses immediately
+            proxy_buffering off;
+            proxy_request_buffering off;
+            
+            # Headers
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_cache_bypass $http_upgrade;
+        }
+
+        # Proxy WebSocket connections (Socket.io)
+        location /socket.io {
+            proxy_pass http://freqhub-backend:3001;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Base path configuration
+        # For root path, use simple location
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Gzip compression
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml+rss application/json application/javascript;
+    }

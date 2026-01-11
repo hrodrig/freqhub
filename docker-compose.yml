@@ -25,6 +25,8 @@ services:
       - "3000:80"
     environment:
       - BASE_PATH=${BASE_PATH:-/}
+    # Note: nginx.conf defaults to localhost:3001 for local development
+    # For Docker Compose with backend service, you may need to create a custom nginx.conf
     restart: unless-stopped
     depends_on:
       - backend

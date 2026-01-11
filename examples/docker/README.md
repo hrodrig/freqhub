@@ -174,25 +174,90 @@ docker-compose down -v
 # This will remove volumes with data
 ```
 
+## Access FreqHub and Get Login Credentials
+
+### Default Login Credentials
+
+On first startup, FreqHub automatically creates a superadmin user. The credentials are displayed **ONCE** in the backend logs.
+
+**To find the credentials:**
+
+```bash
+# View backend logs to find the superadmin credentials
+docker compose logs freqhub-backend | grep -A 5 "SUPERADMIN CREATED"
+
+# Or view all backend logs
+docker compose logs freqhub-backend
+```
+
+**Default credentials format:**
+- **Username**: `freqhub` (configurable via `DEFAULT_ADMIN_USERNAME` env var)
+- **Email**: `admin@freqhub.local` (configurable via `DEFAULT_ADMIN_EMAIL` env var)
+- **Password**: Randomly generated secure password (16+ characters) - shown in logs
+
+**⚠️ Important:**
+- The credentials are displayed **ONCE** in the server logs on first startup
+- Copy the credentials immediately
+- Change the password after first login
+- Store the credentials securely
+
+**Example log output:**
+```
+================================================================================
+⚠️  SUPERADMIN CREATED AUTOMATICALLY
+================================================================================
+👤 Username: freqhub
+🔑 Password: [randomly generated]
+📧 Email: admin@freqhub.local
+================================================================================
+⚠️  IMPORTANT: Change the password after the first login
+⚠️  These credentials are only shown ONCE
+================================================================================
+```
+
+**Access FreqHub:**
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
+- **Swagger API Docs**: http://localhost:3001/api-docs
+
 ## Connect with FreqHub
 
-Once the instances are running, you can add them in FreqHub:
+Once the instances are running and you're logged in, you can add them in FreqHub:
+
+**⚠️ Important - URL Format:**
+
+The API URL depends on your deployment scenario:
+
+- **Local Development** (FreqHub running locally, Freqtrade in Docker): Use `http://localhost:8080`
+- **Docker Compose** (both FreqHub and Freqtrade in Docker): Use Docker service names like `http://freqtrade-bot-1:8080`
+- **Kubernetes**: Use Kubernetes service names like `http://freqtrade-service-name:8080`
+
+**Note**: When FreqHub backend runs inside Docker/Kubernetes, it needs to connect to Freqtrade using service names (not `localhost`), as `localhost` refers to the container itself.
 
 ### Bot 1
 - **Name**: `Freqtrade Bot 1`
-- **API URL**: `http://localhost:8080` (from host) or `http://freqtrade-bot-1:8080` (from Docker)
+- **API URL**: 
+  - `http://localhost:8080` (if FreqHub is running locally/developing)
+  - `http://freqtrade-bot-1:8080` (if using Docker Compose)
+  - `http://<service-name>:8080` (if using Kubernetes)
 - **Username**: `freqtrader` (or the one you configured)
 - **Password**: `SuperSecret1!` (or the one you configured)
 
 ### Bot 2
 - **Name**: `Freqtrade Bot 2`
-- **API URL**: `http://localhost:8081` (from host) or `http://freqtrade-bot-2:8080` (from Docker)
+- **API URL**: 
+  - `http://localhost:8081` (if FreqHub is running locally/developing)
+  - `http://freqtrade-bot-2:8080` (if using Docker Compose)
+  - `http://<service-name>:8080` (if using Kubernetes)
 - **Username**: `freqtrader` (or the one you configured)
 - **Password**: `SuperSecret2!` (or the one you configured)
 
 ### Bot 3
 - **Name**: `Freqtrade Bot 3 (Disabled)`
-- **API URL**: `http://localhost:8082` (from host) or `http://freqtrade-bot-3:8080` (from Docker)
+- **API URL**: 
+  - `http://localhost:8082` (if FreqHub is running locally/developing)
+  - `http://freqtrade-bot-3:8080` (if using Docker Compose)
+  - `http://<service-name>:8080` (if using Kubernetes)
 - **Username**: `freqtrader` (or the one you configured)
 - **Password**: `SuperSecret3!` (or the one you configured)
 - **Note**: This bot is disabled in the example database but available for testing

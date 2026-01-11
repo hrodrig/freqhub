@@ -41,6 +41,7 @@ By using this software, you acknowledge that:
 - `backend-pvc.yaml` - PersistentVolumeClaim for Backend SQLite database (MicroK8s local storage)
 - `valkey.yaml` - Valkey cache service (Redis-compatible)
 - `backend.yaml` - FreqHub Backend
+- `frontend-nginx-configmap.yaml` - ConfigMap with Nginx configuration for Frontend (points to freqhub-backend:3001)
 - `frontend.yaml` - FreqHub Frontend
 - `ingressroute.example.yaml` - Example IngressRoute for Traefik (reference)
 
@@ -51,9 +52,10 @@ By using this software, you acknowledge that:
 1. Working Kubernetes cluster
 2. `kubectl` configured and connected to the cluster
 3. Traefik as Ingress Controller (optional, you can use another)
-4. FreqHub Docker images available on Docker Hub:
-   - `freqhub/freqhub-backend:latest` (or specific version tag)
-   - `freqhub/freqhub-frontend:latest` (or specific version tag)
+4. FreqHub Docker images available in your registry:
+   - Update the image references in `backend.yaml` and `frontend.yaml` to match your registry
+   - Example: `hcr.hermesrodriguez.com/freqhub/freqhub-backend:dev-latest`
+   - Or use Docker Hub: `freqhub/freqhub-backend:latest`
 
 ## Deployment
 
@@ -85,7 +87,7 @@ Finally, deploy Valkey:
 kubectl apply -f valkey.yaml
 ```
 
-**Note**: The PVC uses `microk8s-hostpath` storage class by default (for MicroK8s). If you're using a different Kubernetes distribution, edit `valkey-pvc.yaml` and change the `storageClassName` accordingly.
+**Note**: The PVC uses the default storage class of your cluster. If you need a specific storage class, edit `valkey-pvc.yaml` and add `storageClassName: <your-storage-class>`.
 
 ### 2. Create backend PersistentVolumeClaim
 
@@ -95,7 +97,7 @@ First, create the PVC for the backend database:
 kubectl apply -f backend-pvc.yaml
 ```
 
-**Note**: The PVC uses `microk8s-hostpath` storage class by default (for MicroK8s). If you're using a different Kubernetes distribution, edit `backend-pvc.yaml` and change the `storageClassName` accordingly.
+**Note**: The PVC uses the default storage class of your cluster. If you need a specific storage class, edit `backend-pvc.yaml` and add `storageClassName: <your-storage-class>`.
 
 ### 3. Configure backend secrets and image tags
 
@@ -114,10 +116,12 @@ stringData:
   ENCRYPTION_KEY: "your-encryption-key-minimum-32-characters"
 ```
 
-2. (Optional) Update the image tag if you want to use a specific version instead of `latest`:
+2. (Optional) Update the image registry and tag if needed:
 
 ```yaml
-image: freqhub/freqhub-backend:v0.2.0  # Use specific version
+# Example: Use a specific version or different registry
+image: hcr.hermesrodriguez.com/freqhub/freqhub-backend:dev-latest
+# Or: docker.io/freqhub/freqhub-backend:v0.2.0
 ```
 
 Then deploy the backend:
@@ -128,10 +132,20 @@ kubectl apply -f backend.yaml
 
 ### 4. Deploy Frontend
 
-**Optional**: Edit `frontend.yaml` to use a specific image tag instead of `latest`:
+First, create the Nginx configuration ConfigMap:
+
+```bash
+kubectl apply -f frontend-nginx-configmap.yaml
+```
+
+This ConfigMap contains the Nginx configuration that points to `http://freqhub-backend:3001`. The default image uses `localhost:3001` for local development, but in Kubernetes this ConfigMap overrides it.
+
+**Optional**: Edit `frontend.yaml` to use a specific image registry and tag if needed:
 
 ```yaml
-image: freqhub/freqhub-frontend:v0.2.0  # Use specific version
+# Example: Use a specific version or different registry
+image: hcr.hermesrodriguez.com/freqhub/freqhub-frontend:dev-latest
+# Or: docker.io/freqhub/freqhub-frontend:v0.2.0
 ```
 
 Then deploy:
@@ -212,14 +226,60 @@ spec:
 
 Then use: `http://freqtrade-bollinger-ema200:8080` (same namespace, simple!)
 
+## Access FreqHub and Get Login Credentials
+
+### Default Login Credentials
+
+On first startup, FreqHub automatically creates a superadmin user. The credentials are displayed **ONCE** in the backend logs.
+
+**To find the credentials:**
+
+```bash
+# View backend logs to find the superadmin credentials
+kubectl logs -n main deployment/freqhub-backend | grep -A 5 "SUPERADMIN CREATED"
+
+# Or view all backend logs
+kubectl logs -n main deployment/freqhub-backend
+```
+
+**Default credentials format:**
+- **Username**: `freqhub` (configurable via `DEFAULT_ADMIN_USERNAME` env var)
+- **Email**: `admin@freqhub.local` (configurable via `DEFAULT_ADMIN_EMAIL` env var)
+- **Password**: Randomly generated secure password (16+ characters) - shown in logs
+
+**⚠️ Important:**
+- The credentials are displayed **ONCE** in the server logs on first startup
+- Copy the credentials immediately
+- Change the password after first login
+- Store the credentials securely
+
+**Example log output:**
+```
+================================================================================
+⚠️  SUPERADMIN CREATED AUTOMATICALLY
+================================================================================
+👤 Username: freqhub
+🔑 Password: [randomly generated]
+📧 Email: admin@freqhub.local
+================================================================================
+⚠️  IMPORTANT: Change the password after the first login
+⚠️  These credentials are only shown ONCE
+================================================================================
+```
+
 ## Configure Bots in FreqHub
 
-Once deployed, access FreqHub and add your bots:
+Once deployed and logged in, access FreqHub and add your bots:
 
 1. **Name**: A descriptive name (e.g., "Bollinger EMA200")
-2. **API URL**: The Freqtrade service/pod URL
+2. **API URL**: 
+   - Use the **Kubernetes service name** (e.g., `http://freqtrade-service-name:8080`)
+   - Or use the **pod name** if no service exists (e.g., `http://freqtrade-pod-name:8080`)
+   - **Do NOT use `localhost`** - the backend runs inside Kubernetes and `localhost` refers to the pod itself
 3. **Username**: The username configured in Freqtrade
 4. **Password**: The password configured in Freqtrade
+
+**Note**: Since everything is in the `main` namespace, you can use simple service names without namespace prefix (e.g., `http://freqtrade-bollinger-ema200:8080`).
 
 ## Verify Deployment
 
@@ -239,9 +299,9 @@ kubectl logs -f deployment/freqhub-frontend -n main
 
 ## Data Persistence
 
-**Valkey**: Configured with a PersistentVolumeClaim (`valkey-pvc.yaml`) using MicroK8s local storage (`microk8s-hostpath`). Adjust the storage class if using a different Kubernetes distribution.
+**Valkey**: Configured with a PersistentVolumeClaim (`valkey-pvc.yaml`) using the default storage class of your cluster. If you need a specific storage class, edit the PVC and add `storageClassName`.
 
-**Backend**: Configured with a PersistentVolumeClaim (`backend-pvc.yaml`) for SQLite database persistence. This ensures data survives pod restarts. The PVC uses `microk8s-hostpath` storage class by default. Adjust the storage class if using a different Kubernetes distribution.
+**Backend**: Configured with a PersistentVolumeClaim (`backend-pvc.yaml`) for SQLite database persistence. This ensures data survives pod restarts. The PVC uses the default storage class of your cluster. If you need a specific storage class, edit the PVC and add `storageClassName`.
 
 ## Scaling
 
