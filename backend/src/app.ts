@@ -119,23 +119,24 @@ app.use(errorHandler);
 
 // Start server
 const PORT = parseInt(env.PORT, 10);
+const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces for Docker/Kubernetes
 
 // Initialize system (create superadmin if needed) before starting server
 initializeSystem().then(() => {
-  httpServer.listen(PORT, () => {
-    console.log(`🚀 FreqHub Backend running on http://localhost:${PORT}`);
+  httpServer.listen(PORT, HOST, () => {
+    console.log(`🚀 FreqHub Backend running on http://${HOST}:${PORT}`);
     console.log(`📊 Environment: ${env.NODE_ENV}`);
     console.log(`💾 Database: ${env.DATABASE_PATH}`);
     if (basePath) {
       console.log(`🔗 Base Path: ${basePath}`);
-      console.log(`   Health: http://localhost:${PORT}${basePath}/api/healthz`);
-      console.log(`   Bots: http://localhost:${PORT}${basePath}/api/bots`);
-      console.log(`   Swagger: http://localhost:${PORT}${basePath}/api-docs`);
+      console.log(`   Health: http://${HOST}:${PORT}${basePath}/api/healthz`);
+      console.log(`   Bots: http://${HOST}:${PORT}${basePath}/api/bots`);
+      console.log(`   Swagger: http://${HOST}:${PORT}${basePath}/api-docs`);
     } else {
       console.log(`🔗 Base Path: / (root)`);
-      console.log(`   Health: http://localhost:${PORT}/api/healthz`);
-      console.log(`   Bots: http://localhost:${PORT}/api/bots`);
-      console.log(`   Swagger: http://localhost:${PORT}/api-docs`);
+      console.log(`   Health: http://${HOST}:${PORT}/api/healthz`);
+      console.log(`   Bots: http://${HOST}:${PORT}/api/bots`);
+      console.log(`   Swagger: http://${HOST}:${PORT}/api-docs`);
     }
 
     // Start polling service
