@@ -1,6 +1,6 @@
 <!--
  * FreqHub - Multi-bot dashboard for Freqtrade
- * Copyright (C) 2025  FreqHub Contributors
+ * Copyright (C) 2025 - 2026  FreqHub Contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@ For all source files (TypeScript, JavaScript, etc.), use the following header fo
 ```typescript
 /*
  * FreqHub - Multi-bot dashboard for Freqtrade
- * Copyright (C) 2025  FreqHub Contributors
+ * Copyright (C) 2025 - 2026  FreqHub Contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ This header format is **fully compatible** with GPL v3. In fact, it's the recomm
 ```typescript
 /*
  * FreqHub - Multi-bot dashboard for Freqtrade
- * Copyright (C) 2025  FreqHub Contributors
+ * Copyright (C) 2025 - 2026  FreqHub Contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -103,7 +103,7 @@ For very small utility files, you can use a shorter version:
 
 ```typescript
 /*
- * Copyright (C) 2025  FreqHub Contributors
+ * Copyright (C) 2025 - 2026  FreqHub Contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 ```

@@ -1,0 +1,76 @@
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+---
+# Example IngressRoute for Traefik
+# This is just a reference example - each user must configure their own Ingress/IngressRoute
+# according to their infrastructure and needs
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: freqhub-ingressroute
+  namespace: main
+spec:
+  entryPoints:
+    - web
+    # - websecure  # Uncomment if using TLS
+  routes:
+    # Route for frontend
+    - match: Host(`freqhub.your-domain.com`) && PathPrefix(`/`)
+      kind: Rule
+      services:
+        - name: freqhub-frontend
+          port: 80
+          # If service is in another namespace, use: namespace@service-name
+          # name: other-namespace@freqhub-frontend
+          # Or specify namespace explicitly:
+          # namespace: other-namespace
+    # Route for backend API
+    - match: Host(`freqhub.your-domain.com`) && PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: freqhub-backend
+          port: 3001
+          # If service is in another namespace, use: namespace@service-name
+          # name: other-namespace@freqhub-backend
+          # Or specify namespace explicitly:
+          # namespace: other-namespace
+      # Middleware for CORS (if needed)
+      # middlewares:
+      #   - name: cors-headers
+  # TLS (optional)
+  # tls:
+  #   secretName: freqhub-tls
+  #   certResolver: letsencrypt
+
+---
+# Example Middleware for CORS (if needed)
+# apiVersion: traefik.containo.us/v1alpha1
+# kind: Middleware
+# metadata:
+#   name: cors-headers
+#   namespace: main
+# spec:
+#   headers:
+#     accessControlAllowMethods:
+#       - GET
+#       - POST
+#       - PUT
+#       - DELETE
+#       - OPTIONS
+#     accessControlAllowOrigin: "*"
+#     accessControlMaxAge: 100
+#     addVaryHeader: true

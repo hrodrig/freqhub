@@ -1,0 +1,149 @@
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: freqhub-backend-config
+  namespace: main
+  labels:
+    app: freqhub
+    component: backend
+data:
+  PORT: "3001"
+  NODE_ENV: "production"
+  DATABASE_PATH: "/app/data/freqhub.db"
+  CORS_ORIGIN: "http://localhost:3000"
+  LOG_LEVEL: "info"
+  VALKEY_ENABLED: "true"
+  VALKEY_HOST: "freqhub-valkey"
+  VALKEY_PORT: "6379"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: freqhub-backend-secrets
+  namespace: main
+  labels:
+    app: freqhub
+    component: backend
+type: Opaque
+stringData:
+  # Change these values in production
+  ENCRYPTION_KEY: "change-this-encryption-key-min-32-characters-long-in-production"
+  # VALKEY_PASSWORD: ""  # Optional, if Valkey has a password
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: freqhub-backend
+  namespace: main
+  labels:
+    app: freqhub
+    component: backend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3001
+      targetPort: 3001
+      protocol: TCP
+      name: http
+  selector:
+    app: freqhub
+    component: backend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: freqhub-backend
+  namespace: main
+  labels:
+    app: freqhub
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: freqhub
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: freqhub
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          # Use published image from Docker Hub
+          # For development, you can build locally and use a different image
+          image: freqhub/freqhub-backend:latest
+          ports:
+            - containerPort: 3001
+              name: http
+          envFrom:
+            - configMapRef:
+                name: freqhub-backend-config
+            - secretRef:
+                name: freqhub-backend-secrets
+          volumeMounts:
+            - name: backend-data
+              mountPath: /app/data
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3001
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: 3001
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - freqhub
+                    - key: component
+                      operator: In
+                      values:
+                        - valkey
+                topologyKey: kubernetes.io/hostname
+      volumes:
+        - name: backend-data
+          persistentVolumeClaim:
+            claimName: freqhub-backend-pvc
+        - name: tmp-volume
+          emptyDir:
+            sizeLimit: 16Gi

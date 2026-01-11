@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /*
  * FreqHub - Multi-bot dashboard for Freqtrade
- * Copyright (C) 2025  FreqHub Contributors
+ * Copyright (C) 2025 - 2026  FreqHub Contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

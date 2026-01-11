@@ -1,0 +1,103 @@
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: freqhub-frontend-config
+  namespace: main
+  labels:
+    app: freqhub
+    component: frontend
+data:
+  BASE_PATH: "/"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: freqhub-frontend
+  namespace: main
+  labels:
+    app: freqhub
+    component: frontend
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    app: freqhub
+    component: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: freqhub-frontend
+  namespace: main
+  labels:
+    app: freqhub
+    component: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: freqhub
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: freqhub
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          # Use published image from Docker Hub
+          # For development, you can build locally and use a different image
+          image: freqhub/freqhub-frontend:latest
+          ports:
+            - containerPort: 80
+              name: http
+          envFrom:
+            - configMapRef:
+                name: freqhub-frontend-config
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: tmp-volume
+          emptyDir:
+            sizeLimit: 16Gi
