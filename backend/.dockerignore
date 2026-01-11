@@ -1,0 +1,85 @@
+# Exclude environment files (but allow .env.example)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+# Allow .env.example files (they are safe examples and useful as reference)
+!.env.example
+
+# Exclude data directories (databases, cache, etc.)
+data/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.rdb
+*.aof
+appendonlydir/
+dump.rdb
+
+# Exclude node_modules (will be installed in container)
+node_modules/
+
+# Exclude build artifacts (will be built in container)
+dist/
+build/
+*.tsbuildinfo
+
+# Exclude test files
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+__tests__/
+test/
+tests/
+
+# Exclude development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Exclude logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Exclude coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Exclude temporary files
+*.tmp
+*.temp
+.cache/
+.parcel-cache/
+
+# Exclude git files
+.git/
+.gitignore
+.gitattributes
+
+# Exclude documentation (not needed in image)
+*.md
+!README.md
+
+# Exclude scripts that are not needed in production
+scripts/
+!scripts/create-example-db.ts
+
+# Exclude config files that might contain secrets
+config.json
+freqtrade-config.json
+*.secret
+*.key
+*.pem
