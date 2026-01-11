@@ -1,17 +1,39 @@
-# Docker Compose example using published Docker images
-# This example uses pre-built images from a Docker registry instead of building locally
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
 #
-# To use this file:
-# 1. Configure your registry in .docker-publish-config (see .docker-publish-config.example)
-# 2. Publish images using: ./scripts/publish-docker-images.sh [version] [--latest]
-# 3. Update the IMAGE_REGISTRY, IMAGE_USERNAME, and IMAGE_VERSION variables below
-# 4. Run: docker-compose -f docker-compose.published.yml up -d
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 #
-# Example:
-#   export IMAGE_REGISTRY=docker.io
-#   export IMAGE_USERNAME=your-username
-#   export IMAGE_VERSION=v0.2.0
-#   docker-compose -f docker-compose.published.yml up -d
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# ⚖️ DISCLAIMER
+# USE AT YOUR OWN RISK
+#
+# This software is provided "as is", without warranty of any kind, express or implied,
+# including but not limited to the warranties of merchantability, fitness for a particular
+# purpose and noninfringement. In no event shall the authors or copyright holders be liable
+# for any claim, damages or other liability, whether in an action of contract, tort or
+# otherwise, arising from, out of or in connection with the software or the use or other
+# dealings in the software.
+#
+# Trading cryptocurrencies involves substantial risk of loss and is not suitable for every
+# investor. The value of cryptocurrencies may fluctuate, and you may lose some or all of
+# your investment. Past performance is not indicative of future results.
+#
+# Docker Compose example for running multiple Freqtrade instances (Development)
+# This file is for local development when you want to run FreqHub locally
+# and connect to Freqtrade bots running in Docker containers
+#
+# Usage:
+#   docker-compose -f docker-compose-bots-valkey.yml up -d
 
 services:
   # Valkey Cache (Redis-compatible) - Optional but recommended for FreqHub
@@ -32,53 +54,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-
-  # FreqHub Backend (using published image)
-  freqhub-backend:
-    image: ${IMAGE_REGISTRY:-docker.io}/${IMAGE_USERNAME:-freqhub}/freqhub-backend:${IMAGE_VERSION:-latest}
-    container_name: freqhub-backend
-    ports:
-      - "3001:3001"
-    environment:
-      - PORT=3001
-      - NODE_ENV=production
-      - DATABASE_PATH=/app/data/freqhub.db
-      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-this-encryption-key-in-production}
-      - CORS_ORIGIN=http://localhost:3000
-      # Valkey Cache Configuration
-      - VALKEY_ENABLED=${VALKEY_ENABLED:-true}
-      - VALKEY_HOST=valkey
-      - VALKEY_PORT=6379
-      - VALKEY_PASSWORD=${VALKEY_PASSWORD:-}
-    volumes:
-      - ./freqhub-data:/app/data
-    networks:
-      - freqtrade-network
-    restart: unless-stopped
-    depends_on:
-      valkey:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # FreqHub Frontend (using published image)
-  freqhub-frontend:
-    image: ${IMAGE_REGISTRY:-docker.io}/${IMAGE_USERNAME:-freqhub}/freqhub-frontend:${IMAGE_VERSION:-latest}
-    container_name: freqhub-frontend
-    ports:
-      - "3000:80"
-    environment:
-      - BASE_PATH=${BASE_PATH:-/}
-    networks:
-      - freqtrade-network
-    restart: unless-stopped
-    depends_on:
-      - freqhub-backend
-
   # Freqtrade Bot Instance 1
   freqtrade-bot-1:
     image: freqtradeorg/freqtrade:stable
@@ -114,7 +89,7 @@ services:
     networks:
       - freqtrade-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/ping"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -155,7 +130,7 @@ services:
     networks:
       - freqtrade-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/ping"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -196,7 +171,7 @@ services:
     networks:
       - freqtrade-network
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/ping"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -205,3 +180,4 @@ services:
 networks:
   freqtrade-network:
     driver: bridge
+

@@ -123,19 +123,28 @@ FreqHub includes a Makefile for easy automation. After cloning the repository:
 # Complete setup (installs dependencies, creates .env files, sets up example DB)
 make setup
 
-# Start development servers (backend + frontend)
+# IMPORTANT: For local development, start Valkey and bots first
+make dev-bots  # Start Valkey and Freqtrade bots in Docker
+
+# Then start development servers (backend + frontend)
 make dev
 
 # Or start them separately
 make dev-backend  # Backend only
 make dev-frontend  # Frontend only
+
+# To stop bots and Valkey
+make dev-bots-stop
 ```
 
 **Available Makefile commands:**
 - `make help` - Show all available commands
 - `make setup` - Complete initial setup
 - `make install` - Install all dependencies
-- `make dev` - Start both backend and frontend
+- `make dev-bots` - Start Valkey and Freqtrade bots for local development
+- `make dev-bots-stop` - Stop Valkey and Freqtrade bots
+- `make dev-bots-logs` - Show logs from bots and Valkey
+- `make dev` - Start both backend and frontend (requires bots running)
 - `make build` - Build for production
 - `make docker-up` - Start with Docker Compose
 - `make lint` - Run linters
@@ -193,6 +202,25 @@ npm run dev
 ```
 
 The backend will start on `http://localhost:3001` and the frontend on `http://localhost:3000`.
+
+**⚠️ Important for Local Development:**
+
+Before running `make dev` or starting the backend manually, you need to start Valkey and Freqtrade bots:
+
+```bash
+# Start Valkey and bots (required for local development)
+cd examples/docker
+docker-compose -f docker-compose-bots-valkey.yml up -d
+
+# Or use the Makefile command
+make dev-bots
+```
+
+This will start:
+- **Valkey** (cache) on `localhost:6379`
+- **Freqtrade Bot 1** on `http://localhost:8080`
+- **Freqtrade Bot 2** on `http://localhost:8081`
+- **Freqtrade Bot 3** on `http://localhost:8082`
 
 **Note:** The Makefile (`make setup`) automates all of the above steps for faster setup.
 

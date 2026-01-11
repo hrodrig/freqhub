@@ -1,21 +1,19 @@
-/*
- * FreqHub - Multi-bot dashboard for Freqtrade
- * Copyright (C) 2025 - 2026  FreqHub Contributors
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
-
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
 # FreqHub Makefile
 # Inspired by NautilusTrader's automation approach
 # Provides simple commands for common development tasks
@@ -34,7 +32,7 @@
 # investor. The value of cryptocurrencies may fluctuate, and you may lose some or all of
 # your investment. Past performance is not indicative of future results.
 
-.PHONY: help install setup dev build test lint format clean docker-up docker-down docker-build docker-logs db-migrate db-seed db-example test-websocket test-polling
+.PHONY: help install setup dev dev-bots dev-bots-stop dev-bots-logs dev-backend dev-frontend build test lint format clean docker-up docker-down docker-build docker-logs db-migrate db-seed db-example test-websocket test-polling
 
 # Default target
 .DEFAULT_GOAL := help
@@ -93,11 +91,34 @@ setup: ## Complete initial setup (install + env files + example DB)
 
 ##@ Development
 
+dev-bots: ## Start Valkey and Freqtrade bots for local development
+	@echo "$(BLUE)Starting Valkey and Freqtrade bots...$(NC)"
+	@echo "$(YELLOW)This will start:$(NC)"
+	@echo "$(YELLOW)  - Valkey (cache) on localhost:6379$(NC)"
+	@echo "$(YELLOW)  - Freqtrade Bot 1 on localhost:8080$(NC)"
+	@echo "$(YELLOW)  - Freqtrade Bot 2 on localhost:8081$(NC)"
+	@echo "$(YELLOW)  - Freqtrade Bot 3 on localhost:8082$(NC)"
+	cd examples/docker && docker-compose -f docker-compose-bots-valkey.yml up -d
+	@echo "$(GREEN)✓ Bots and Valkey started$(NC)"
+	@echo "$(YELLOW)To stop: make dev-bots-stop$(NC)"
+
+dev-bots-stop: ## Stop Valkey and Freqtrade bots
+	@echo "$(BLUE)Stopping Valkey and Freqtrade bots...$(NC)"
+	cd examples/docker && docker-compose -f docker-compose-bots-valkey.yml down
+	@echo "$(GREEN)✓ Bots and Valkey stopped$(NC)"
+
+dev-bots-logs: ## Show logs from Valkey and Freqtrade bots
+	cd examples/docker && docker-compose -f docker-compose-bots-valkey.yml logs -f
+
 dev: ## Start development servers (backend + frontend in parallel)
 	@echo "$(BLUE)Starting development servers...$(NC)"
 	@echo "$(YELLOW)Backend: http://localhost:3001$(NC)"
 	@echo "$(YELLOW)Frontend: http://localhost:3000$(NC)"
 	@echo "$(YELLOW)Press Ctrl+C to stop$(NC)"
+	@echo ""
+	@echo "$(YELLOW)⚠ Note: Make sure Valkey and bots are running first:$(NC)"
+	@echo "$(YELLOW)   make dev-bots$(NC)"
+	@echo ""
 	@trap 'kill 0' EXIT; \
 	cd backend && npm run dev & \
 	cd frontend && npm run dev & \
@@ -105,6 +126,8 @@ dev: ## Start development servers (backend + frontend in parallel)
 
 dev-backend: ## Start backend development server only
 	@echo "$(BLUE)Starting backend development server...$(NC)"
+	@echo "$(YELLOW)⚠ Note: Make sure Valkey is running first:$(NC)"
+	@echo "$(YELLOW)   make dev-bots$(NC)"
 	cd backend && npm run dev
 
 dev-frontend: ## Start frontend development server only
