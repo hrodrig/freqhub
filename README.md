@@ -815,6 +815,7 @@ You should have received a copy of the GNU General Public License along with thi
 
 - **Issues**: [GitHub Issues](https://github.com/hrodrig/freqhub/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/hrodrig/freqhub/discussions)
+- **Donations**: [Donations](DONATIONS.md)
 
 ---
 
