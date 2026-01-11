@@ -24,8 +24,10 @@ export const config = {
   basePath: import.meta.env.BASE_URL || '/',
   // In production (Kubernetes/Docker), use relative URL so Nginx can proxy to backend
   // In development, use localhost:3001
-  // If VITE_API_PROXY_TARGET is explicitly set, use that value
-  apiUrl: import.meta.env.VITE_API_PROXY_TARGET || 
-    (import.meta.env.PROD ? '' : 'http://localhost:3001'),
+  // If VITE_API_PROXY_TARGET is explicitly set and not empty, use that value
+  // Otherwise, use relative URL in production, localhost in development
+  apiUrl: (import.meta.env.VITE_API_PROXY_TARGET && import.meta.env.VITE_API_PROXY_TARGET.trim() !== '') 
+    ? import.meta.env.VITE_API_PROXY_TARGET 
+    : (import.meta.env.PROD ? '' : 'http://localhost:3001'),
 };
 
