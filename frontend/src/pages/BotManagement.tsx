@@ -17,7 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Edit, Trash2, TestTube, CheckCircle2, XCircle, Loader2, Play, Square, Pause, RotateCcw, Settings, RefreshCw } from 'lucide-react';
+import { Plus, X, Edit, Trash2, TestTube, CheckCircle2, XCircle, Loader2, Play, Square, Pause, RotateCcw, Settings, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useBotStore } from '../stores/botStore.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
@@ -59,6 +59,7 @@ export function BotManagement() {
   const [botStatuses, setBotStatuses] = useState<BotStatus[]>([]);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchBots();
@@ -465,6 +466,7 @@ export function BotManagement() {
       }
       setShowForm(false);
       setFormData({ name: '', apiUrl: '', username: '', password: '', notes: '', isEnabled: true });
+      setShowPassword(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save bot');
     } finally {
@@ -608,14 +610,47 @@ export function BotManagement() {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Password
                   </label>
-                  <input
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder={editingBot ? 'Leave empty to keep current password' : 'Enter password'}
-                    required={!editingBot}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-3 py-2 pr-10 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder={editingBot ? 'Leave empty to keep current password' : 'Enter password'}
+                      required={!editingBot}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: 'absolute',
+                        right: '0.5rem',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '0.25rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#a0a0a0',
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.color = '#e0e0e0';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.color = '#a0a0a0';
+                      }}
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
