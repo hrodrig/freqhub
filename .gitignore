@@ -152,11 +152,15 @@ lerna-debug.log*
 !examples/
 !examples/**/*
 
+# Exclude files starting with dot in examples (except .keep and .env.example)
+examples/**/.*
+!examples/**/.keep
+!examples/**/.env.example
+
 # Exclude sensitive files in examples
 examples/**/.env
 examples/**/secret.yaml
 !examples/**/secret.yaml.example
-!examples/**/.env.example
 
 # Include Freqtrade data directories and configs (in examples/docker/)
 !examples/docker/freqtrade-data-*/
@@ -170,6 +174,11 @@ examples/docker/freqtrade-data-*/*.sqlite
 examples/docker/freqtrade-data-*/*.sqlite-shm
 examples/docker/freqtrade-data-*/*.sqlite-wal
 examples/docker/freqtrade-data-*/*.sqlite3
+
+# Exclude FreqHub database files in examples/docker
+examples/docker/**/*.db
+examples/docker/**/*.db-shm
+examples/docker/**/*.db-wal
 examples/docker/freqtrade-data-*/logs/
 examples/docker/freqtrade-data-*/.freqtrade/
 examples/docker/freqtrade-data-*/backtest_results/
