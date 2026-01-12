@@ -82,8 +82,9 @@ spec:
         - name: frontend
           # Use published image from registry
           # Update this to match your registry and image tag
-          # Example: hcr.hermesrodriguez.com/freqhub/freqhub-frontend:dev-latest
-          image: hcr.hermesrodriguez.com/freqhub/freqhub-frontend:dev-latest
+          # Example: your-registry.com/freqhub/freqhub-frontend:dev-latest
+          # Or: docker.io/freqhub/freqhub-frontend:latest
+          image: your-registry.com/freqhub/freqhub-frontend:dev-latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80

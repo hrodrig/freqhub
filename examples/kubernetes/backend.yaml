@@ -105,8 +105,9 @@ spec:
         - name: backend
           # Use published image from registry
           # Update this to match your registry and image tag
-          # Example: hcr.hermesrodriguez.com/freqhub/freqhub-backend:dev-latest
-          image: hcr.hermesrodriguez.com/freqhub/freqhub-backend:dev-latest
+          # Example: your-registry.com/freqhub/freqhub-backend:dev-latest
+          # Or: docker.io/freqhub/freqhub-backend:latest
+          image: your-registry.com/freqhub/freqhub-backend:dev-latest
           imagePullPolicy: Always
           ports:
             - containerPort: 3001

@@ -169,7 +169,7 @@ cd freqhub
 # Backend setup
 cd backend
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env with your configuration (especially ENCRYPTION_KEY and JWT_SECRET)
 npm install  # or pnpm install / yarn install
 ```
 
@@ -189,7 +189,8 @@ npm run dev
 
 # Frontend setup (in another terminal)
 cd frontend
-cp .env.example .env  # If .env.example exists
+cp .env.example .env
+# Edit .env if needed (defaults work for local development)
 npm install  # or pnpm install / yarn install
 
 # Install UI dependencies (Tailwind CSS, Shadcn UI, etc.)
@@ -455,7 +456,14 @@ When the system starts for the first time (or if no superadmin exists), it autom
 
 ### Backend Environment Variables
 
-Create `backend/.env`:
+Create `backend/.env` from the example file:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+The example file includes:
 
 ```env
 PORT=3001
@@ -482,6 +490,13 @@ POLLING_INTERVAL=10000  # Polling interval in milliseconds (default: 10000 = 10 
 RATE_LIMIT_ENABLED=true  # Set to false to disable rate limiting
 RATE_LIMIT_DEFAULT=60  # Default requests per window (default: 60)
 RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
+```
+
+**⚠️ Important**: After copying `.env.example` to `.env`, edit the file and set secure values for:
+- `ENCRYPTION_KEY` (must be at least 32 characters)
+- `JWT_SECRET` (must be at least 32 characters)
+
+See [ENV_SETUP.md](ENV_SETUP.md) for detailed configuration instructions.
 
 # Superadmin Initialization (Optional)
 # Customize the default superadmin username and email
@@ -530,11 +545,9 @@ npx tailwindcss init -p
 npm install recharts lucide-react
 npm install -D @types/node
 
-# Create .env file
-cp .env.example .env  # If .env.example exists
-# Or create manually with:
-# VITE_BASE_PATH=/
-# VITE_API_PROXY_TARGET=http://localhost:3001
+# Create .env file from example
+cp .env.example .env
+# Edit .env if needed (defaults work for local development)
 
 npm run dev
 ```
@@ -553,12 +566,20 @@ npm run dev
 
 ### Frontend Environment Variables
 
-Create `frontend/.env`:
+Create `frontend/.env` from the example file:
 
+```bash
+cd frontend
+cp .env.example .env
+```
+
+The example file includes:
 ```env
 VITE_BASE_PATH=/
 VITE_API_PROXY_TARGET=http://localhost:3001
 ```
+
+Edit `.env` if needed (defaults work for local development).
 
 ### Base Path Configuration
 

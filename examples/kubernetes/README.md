@@ -54,8 +54,8 @@ By using this software, you acknowledge that:
 3. Traefik as Ingress Controller (optional, you can use another)
 4. FreqHub Docker images available in your registry:
    - Update the image references in `backend.yaml` and `frontend.yaml` to match your registry
-   - Example: `hcr.hermesrodriguez.com/freqhub/freqhub-backend:dev-latest`
-   - Or use Docker Hub: `freqhub/freqhub-backend:latest`
+   - Example: `your-registry.com/freqhub/freqhub-backend:dev-latest`
+   - Or use Docker Hub: `docker.io/freqhub/freqhub-backend:latest`
 
 ## Deployment
 
@@ -120,8 +120,8 @@ stringData:
 
 ```yaml
 # Example: Use a specific version or different registry
-image: hcr.hermesrodriguez.com/freqhub/freqhub-backend:dev-latest
-# Or: docker.io/freqhub/freqhub-backend:v0.2.0
+image: your-registry.com/freqhub/freqhub-backend:dev-latest
+# Or: docker.io/freqhub/freqhub-backend:v0.2.4
 ```
 
 Then deploy the backend:
@@ -144,8 +144,8 @@ This ConfigMap contains the Nginx configuration that points to `http://freqhub-b
 
 ```yaml
 # Example: Use a specific version or different registry
-image: hcr.hermesrodriguez.com/freqhub/freqhub-frontend:dev-latest
-# Or: docker.io/freqhub/freqhub-frontend:v0.2.0
+image: your-registry.com/freqhub/freqhub-frontend:dev-latest
+# Or: docker.io/freqhub/freqhub-frontend:v0.2.4
 ```
 
 Then deploy:
