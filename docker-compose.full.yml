@@ -103,15 +103,16 @@ services:
       backend:
         condition: service_healthy
 
-  # Freqtrade Instance 1
-  freqtrade-1:
+  # Freqtrade Bot Instance 1
+  freqtrade-bot-1:
     image: freqtradeorg/freqtrade:stable
-    container_name: freqtrade-1
+    container_name: freqtrade-bot-1
     volumes:
       - ./examples/docker/freqtrade-data-1:/freqtrade/user_data
     ports:
       - "8080:8080"
     environment:
+      # API Server Configuration
       - FREQTRADE__API_SERVER__ENABLED=true
       - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
       - FREQTRADE__API_SERVER__LISTEN_PORT=8080
@@ -119,33 +120,40 @@ services:
       - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_1:-SuperSecret1!}
       - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
       - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
-      - FREQTRADE__DRY_RUN=true
-      - FREQTRADE__DRY_RUN_WALLET=1000
+      # Exchange Configuration (Binance)
+      - FREQTRADE__EXCHANGE__NAME=${FREQTRADE_EXCHANGE_NAME:-binance}
+      - FREQTRADE__EXCHANGE__KEY=${FREQTRADE_EXCHANGE_KEY_1:-}
+      - FREQTRADE__EXCHANGE__SECRET=${FREQTRADE_EXCHANGE_SECRET_1:-}
+      # Trading Configuration
+      - FREQTRADE__DRY_RUN=${FREQTRADE_DRY_RUN:-true}
+      - FREQTRADE__DRY_RUN_WALLET=${FREQTRADE_DRY_RUN_WALLET:-1000}
+      - FREQTRADE__STRATEGY=${FREQTRADE_STRATEGY_1:-SampleStrategy}
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
       --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
       --config /freqtrade/user_data/config.json
-      --strategy SampleStrategy
+      --strategy ${FREQTRADE_STRATEGY_1:-SampleStrategy}
     networks:
       - freqhub-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/ping"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
 
-  # Freqtrade Instance 2 (for multi-bot testing)
-  freqtrade-2:
+  # Freqtrade Bot Instance 2
+  freqtrade-bot-2:
     image: freqtradeorg/freqtrade:stable
-    container_name: freqtrade-2
+    container_name: freqtrade-bot-2
     volumes:
       - ./examples/docker/freqtrade-data-2:/freqtrade/user_data
     ports:
       - "8081:8080"
     environment:
+      # API Server Configuration
       - FREQTRADE__API_SERVER__ENABLED=true
       - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
       - FREQTRADE__API_SERVER__LISTEN_PORT=8080
@@ -153,33 +161,40 @@ services:
       - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_2:-SuperSecret2!}
       - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
       - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
-      - FREQTRADE__DRY_RUN=true
-      - FREQTRADE__DRY_RUN_WALLET=1000
+      # Exchange Configuration (Binance)
+      - FREQTRADE__EXCHANGE__NAME=${FREQTRADE_EXCHANGE_NAME:-binance}
+      - FREQTRADE__EXCHANGE__KEY=${FREQTRADE_EXCHANGE_KEY_2:-}
+      - FREQTRADE__EXCHANGE__SECRET=${FREQTRADE_EXCHANGE_SECRET_2:-}
+      # Trading Configuration
+      - FREQTRADE__DRY_RUN=${FREQTRADE_DRY_RUN:-true}
+      - FREQTRADE__DRY_RUN_WALLET=${FREQTRADE_DRY_RUN_WALLET:-1000}
+      - FREQTRADE__STRATEGY=${FREQTRADE_STRATEGY_2:-SampleStrategy}
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
       --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
       --config /freqtrade/user_data/config.json
-      --strategy SampleStrategy
+      --strategy ${FREQTRADE_STRATEGY_2:-SampleStrategy}
     networks:
       - freqhub-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/ping"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
 
-  # Freqtrade Instance 3 (disabled in example DB, but available for testing)
-  freqtrade-3:
+  # Freqtrade Bot Instance 3 (disabled in example DB, but available for testing)
+  freqtrade-bot-3:
     image: freqtradeorg/freqtrade:stable
-    container_name: freqtrade-3
+    container_name: freqtrade-bot-3
     volumes:
       - ./examples/docker/freqtrade-data-3:/freqtrade/user_data
     ports:
       - "8082:8080"
     environment:
+      # API Server Configuration
       - FREQTRADE__API_SERVER__ENABLED=true
       - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
       - FREQTRADE__API_SERVER__LISTEN_PORT=8080
@@ -187,19 +202,25 @@ services:
       - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_3:-SuperSecret3!}
       - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
       - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
-      - FREQTRADE__DRY_RUN=true
-      - FREQTRADE__DRY_RUN_WALLET=1000
+      # Exchange Configuration (Binance)
+      - FREQTRADE__EXCHANGE__NAME=${FREQTRADE_EXCHANGE_NAME:-binance}
+      - FREQTRADE__EXCHANGE__KEY=${FREQTRADE_EXCHANGE_KEY_3:-}
+      - FREQTRADE__EXCHANGE__SECRET=${FREQTRADE_EXCHANGE_SECRET_3:-}
+      # Trading Configuration
+      - FREQTRADE__DRY_RUN=${FREQTRADE_DRY_RUN:-true}
+      - FREQTRADE__DRY_RUN_WALLET=${FREQTRADE_DRY_RUN_WALLET:-1000}
+      - FREQTRADE__STRATEGY=${FREQTRADE_STRATEGY_3:-SampleStrategy}
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
       --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
       --config /freqtrade/user_data/config.json
-      --strategy SampleStrategy
+      --strategy ${FREQTRADE_STRATEGY_3:-SampleStrategy}
     networks:
       - freqhub-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/ping"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
