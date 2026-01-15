@@ -35,6 +35,8 @@
 # Usage:
 #   docker-compose -f docker-compose-bots-valkey.yml up -d
 
+name: freqhub-stack
+
 services:
   # Valkey Cache (Redis-compatible) - Optional but recommended for FreqHub
   valkey:

@@ -105,6 +105,8 @@ BASE_PATH=/freqhub
 ### Docker Compose
 
 ```yaml
+name: freqhub-stack
+
 services:
   backend:
     environment:

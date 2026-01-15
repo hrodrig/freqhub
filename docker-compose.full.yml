@@ -28,6 +28,8 @@
 # investor. The value of cryptocurrencies may fluctuate, and you may lose some or all of
 # your investment. Past performance is not indicative of future results.
 
+name: freqhub-stack
+
 services:
   # Valkey Cache (Redis-compatible)
   valkey:

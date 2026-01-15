@@ -42,6 +42,8 @@
 #   FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.0
 #   docker-compose -f docker-compose.published.yml up -d
 
+name: freqhub-stack
+
 services:
   # Valkey Cache (Redis-compatible)
   valkey:

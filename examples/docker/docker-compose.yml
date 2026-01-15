@@ -43,6 +43,8 @@
 #   export IMAGE_VERSION=v0.2.0
 #   docker-compose up -d
 
+name: freqhub-stack
+
 services:
   # Valkey Cache (Redis-compatible) - Optional but recommended for FreqHub
   valkey:
