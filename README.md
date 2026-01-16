@@ -22,7 +22,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
-**FreqHub** is a modern, multi-bot dashboard for [Freqtrade](https://github.com/freqtrade/freqtrade), designed to monitor and control multiple trading bot instances from a single unified interface. Perfect for Kubernetes deployments and multi-strategy trading setups.
+**FreqHub** is a modern, multi-bot dashboard for [Freqtrade](https://github.com/freqtrade/freqtrade), designed to monitor and control multiple trading bot instances from a single unified interface. Perfect for Kubernetes deployments and multi-strategy trading setups. You can also use additional strategies from [freqhub-strategies](https://github.com/hrodrig/freqhub-strategies).
 
 ## 📦 Version
 

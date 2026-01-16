@@ -72,12 +72,6 @@ services:
     depends_on:
       valkey:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/healthz"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   # FreqHub Frontend
   frontend:
@@ -99,9 +93,12 @@ services:
     networks:
       - freqhub-network
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/ping"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 40s
 
   # Freqtrade Bot Instance 1
   freqtrade-bot-1:
