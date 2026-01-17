@@ -138,7 +138,9 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 - 🔄 **Backtest Comparison**: Compare backtest results across strategies
 - 🔄 **Alert System**: Centralized alerts from all bot instances
 
-## 📋 Prerequisites
+## 📋 Prerequisites (For Developers)
+
+**Note:** These prerequisites are for developers who want to modify or contribute to the repository. End users can use FreqHub via Docker without installing these tools.
 
 - Node.js 18+ and npm/pnpm/yarn
 - One or more [Freqtrade](https://github.com/freqtrade/freqtrade) instances running with API enabled
@@ -147,7 +149,23 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 
 ## 🛠️ Installation
 
-### Quick Start (Recommended)
+### For End Users (Docker - Recommended)
+
+If you just want to use FreqHub without modifying the code, use Docker with pre-built images:
+
+```bash
+# Use pre-built images from Docker Hub (fastest, no build required)
+docker compose -f docker-compose.published.yml up -d
+
+# Or with custom image tags
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.8 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.8 \
+docker compose -f docker-compose.published.yml up -d
+```
+
+See the [Docker Deployment](#docker-deployment) section below for more details.
+
+### For Developers (Quick Start)
 
 FreqHub includes a **bash script** (`freqhub`) for easy automation. The script works on Windows with Git Bash, Linux, and macOS.
 
@@ -306,29 +324,27 @@ npm run build
 
 ### Docker Deployment
 
-**With freqhub script:**
+**For End Users - Using Published Images (Recommended):**
 ```bash
-./freqhub start      # Start all services (builds images locally)
-./freqhub stop    # Stop all services
-./freqhub logs    # View logs
-./freqhub build   # Build images
-```
-
-**Manual - Build from source:**
-```bash
-# Build and run with docker compose (builds images locally)
-docker compose -f docker-compose.full.yml up -d
-```
-
-**Using published images from Docker Hub:**
-```bash
-# Use pre-built images from Docker Hub (faster, no build required)
+# Use pre-built images from Docker Hub (fastest, no build required)
 docker compose -f docker-compose.published.yml up -d
 
 # Or with custom image tags
 FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.8 \
 FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.8 \
 docker compose -f docker-compose.published.yml up -d
+```
+
+**For Developers - Build from Source:**
+```bash
+# Using freqhub script
+./freqhub start      # Start all services (builds images locally)
+./freqhub stop    # Stop all services
+./freqhub logs    # View logs
+./freqhub build   # Build images
+
+# Or manually with docker compose
+docker compose -f docker-compose.full.yml up -d
 ```
 
 **Note**: `docker-compose.published.yml` uses pre-built images from Docker Hub. You can customize the image tags using environment variables if needed.
