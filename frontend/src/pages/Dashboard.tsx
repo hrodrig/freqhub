@@ -21,7 +21,7 @@ import { useBotStore } from '../stores/botStore.js';
 import { proxyApi } from '../services/api/endpoints.js';
 import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
 import { Link } from 'react-router-dom';
-import { Bot, Activity, CheckCircle2, XCircle, Loader2, Calendar, Play, Square, Pause, RotateCcw, RefreshCw, Settings } from 'lucide-react';
+import { Bot, Activity, CheckCircle2, XCircle, Loader2, Calendar, Play, Square, Pause, RefreshCw, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { SparklineChart } from '../components/SparklineChart';
 
@@ -315,19 +315,6 @@ export function Dashboard() {
     await loadBotStatuses(undefined, true);
   };
 
-  // Refresh individual bot
-  const handleRefreshBot = async (botId: string) => {
-    setActionLoading((prev) => ({ ...prev, [botId]: 'refresh' }));
-    try {
-      await loadBotStatuses(botId);
-    } finally {
-      setActionLoading((prev) => {
-        const newState = { ...prev };
-        delete newState[botId];
-        return newState;
-      });
-    }
-  };
 
   // Listen to WebSocket events for real-time updates
   useEffect(() => {
@@ -771,7 +758,6 @@ export function Dashboard() {
                       const connectivity = status ? getConnectivityStatus(status) : null;
                       const ConnectivityIcon = connectivity?.icon || XCircle;
                       const stateDisplay = status ? getBotStateDisplay(status) : null;
-                      const runmode = status?.status?.runmode;
 
                       return (
                         <tr
