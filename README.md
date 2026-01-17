@@ -149,7 +149,7 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 
 ### Quick Start (Recommended)
 
-FreqHub includes both a **Makefile** and a **bash script** (`freqhub`) for easy automation. The bash script works on Windows with Git Bash, Linux, and macOS.
+FreqHub includes a **bash script** (`freqhub`) for easy automation. The script works on Windows with Git Bash, Linux, and macOS.
 
 **Using the bash script (works on Windows with Git Bash):**
 
@@ -174,27 +174,27 @@ FreqHub includes both a **Makefile** and a **bash script** (`freqhub`) for easy 
 ./freqhub help
 ```
 
-**Using Makefile (Linux/macOS only):**
+**Using the freqhub script (cross-platform):**
 
 ```bash
 # Complete setup (installs dependencies, creates .env files, sets up example DB)
-make setup
+./freqhub setup
 
 # IMPORTANT: For local development, start Valkey and bots first
-make dev-bots  # Start Valkey and Freqtrade bots in Docker
+./freqhub dev-bots  # Start Valkey and Freqtrade bots in Docker
 
 # Then start development servers (backend + frontend)
-make dev
+./freqhub dev
 
 # Or start them separately
-make dev-backend  # Backend only
-make dev-frontend  # Frontend only
+./freqhub dev-backend  # Backend only
+./freqhub dev-frontend  # Frontend only
 
 # To stop bots and Valkey
-make dev-bots-stop
+./freqhub dev-bots-stop
 ```
 
-**Available commands (same for both `./freqhub` and `make`):**
+**Available commands:**
 - `help` - Show all available commands
 - `setup` - Complete initial setup
 - `install` - Install all dependencies
@@ -263,15 +263,15 @@ The backend will start on `http://localhost:3001` and the frontend on `http://lo
 
 **⚠️ Important for Local Development:**
 
-Before running `make dev` or starting the backend manually, you need to start Valkey and Freqtrade bots:
+Before running `./freqhub dev` or starting the backend manually, you need to start Valkey and Freqtrade bots:
 
 ```bash
 # Start Valkey and bots (required for local development)
 cd examples/docker
 docker compose -f docker-compose-bots-valkey.yml up -d
 
-# Or use the Makefile command
-make dev-bots
+# Or use the freqhub script
+./freqhub dev-bots
 ```
 
 This will start:
@@ -280,15 +280,15 @@ This will start:
 - **Freqtrade Bot 2** on `http://localhost:8081`
 - **Freqtrade Bot 3** on `http://localhost:8082`
 
-**Note:** The Makefile (`make setup`) automates all of the above steps for faster setup.
+**Note:** The `freqhub` script (`./freqhub setup`) automates all of the above steps for faster setup.
 
 ### Production Build
 
-**With Makefile:**
+**With freqhub script:**
 ```bash
-make build        # Build both backend and frontend
-make build-backend   # Backend only
-make build-frontend  # Frontend only
+./freqhub build        # Build both backend and frontend
+./freqhub build-backend   # Backend only
+./freqhub build-frontend  # Frontend only
 ```
 
 **Manual:**
@@ -306,12 +306,12 @@ npm run build
 
 ### Docker Deployment
 
-**With Makefile:**
+**With freqhub script:**
 ```bash
-make docker-up      # Start all services (builds images locally)
-make docker-down    # Stop all services
-make docker-logs    # View logs
-make docker-build   # Build images
+./freqhub start      # Start all services (builds images locally)
+./freqhub stop    # Stop all services
+./freqhub logs    # View logs
+./freqhub build   # Build images
 ```
 
 **Manual - Build from source:**
@@ -581,10 +581,10 @@ Set `POLLING_ENABLED=false` to disable it if you prefer on-demand caching only.
 
 ### Frontend Setup
 
-**With Makefile (Recommended):**
+**With freqhub script (Recommended):**
 ```bash
-make setup  # Installs all dependencies including frontend
-make dev-frontend  # Start frontend only
+./freqhub setup  # Installs all dependencies including frontend
+./freqhub dev-frontend  # Start frontend only
 ```
 
 **Manual Setup:**
