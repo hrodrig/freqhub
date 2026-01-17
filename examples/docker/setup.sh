@@ -154,17 +154,19 @@ fi
 
 # 5. Check .env (optional)
 if [ ! -f "$SCRIPT_DIR/.env" ]; then
-    if [ -f "$SCRIPT_DIR/.env.example" ]; then
-        info ".env file not found, but .env.example exists"
-        info "Copy .env.example to .env and configure your credentials:"
-        info "  cp .env.example .env"
+    if [ -f "$SCRIPT_DIR/env.example" ]; then
+        info ".env file not found, but env.example exists"
+        info "Copy env.example to .env and configure your credentials:"
+        info "  cp env.example .env"
         info "  # Then edit .env with your Binance API keys"
     else
         warn ".env file not found (optional for dry-run mode)"
     fi
 else
     info ".env file found"
-    warn "Make sure to configure Binance API keys in .env for live trading!"
+    warn "Make sure to configure Binance API keys for live trading!"
+    info "  Recommended: Use environment variables (export FREQTRADE_EXCHANGE_KEY_1=...)"
+    info "  Alternative: Configure in .env file"
 fi
 
 # 6. Summary
@@ -172,11 +174,15 @@ echo ""
 info "✅ Setup completed"
 echo ""
 echo "Next steps:"
-echo "  1. (Optional) Create .env file for credentials:"
-echo "     cp .env.example .env"
-echo "     # Edit .env with your Binance API keys (required for live trading)"
+echo "  1. (Optional) Configure credentials for live trading:"
+echo "     Recommended: Use environment variables:"
+echo "       export FREQTRADE_EXCHANGE_KEY_1=your-api-key"
+echo "       export FREQTRADE_EXCHANGE_SECRET_1=your-api-secret"
+echo "     Alternative: Create .env file:"
+echo "       cp env.example .env"
+echo "       # Edit .env with your Binance API keys"
 echo "  2. (Optional) Edit freqtrade-data-*/config.json if needed"
-echo "  3. Run: docker-compose up -d"
+echo "  3. Run: docker compose up -d"
 echo "  4. Verify: curl http://localhost:8080/api/v1/ping"
 echo "  5. Add the bots in FreqHub:"
 echo "     - Bot 1: http://localhost:8080 (password: SuperSecret1!)"
@@ -185,6 +191,7 @@ echo "     - Bot 3: http://localhost:8082 (password: SuperSecret3!)"
 echo ""
 echo "⚠️  IMPORTANT:"
 echo "   - For dry-run mode (paper trading), no API keys needed"
-echo "   - For live trading, you MUST configure Binance API keys in .env"
+echo "   - For live trading, you MUST configure Binance API keys"
+echo "     (Recommended: as environment variables, or in .env file)"
 echo "   - Never commit .env to version control!"
 echo ""

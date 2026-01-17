@@ -1294,6 +1294,10 @@ export function createProxyRouter(): Router {
       const path = req.params[0] || '';
       const fullPath = path.startsWith('/') ? path : `/${path}`;
 
+      // Import logger
+      const { appLogger } = await import('../utils/logger.js');
+      appLogger.info(`[PROXY] DELETE ${fullPath} for bot ${req.params.id}`);
+
       // Skip rate limit in proxyRequest since we already checked it above
       const data = await proxyRequest(req.params.id, 'DELETE', fullPath, undefined, true);
       return res.json(data);

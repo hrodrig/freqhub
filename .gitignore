@@ -248,6 +248,9 @@ examples/docker/valkey-data/appendonlydir/
 # Shell scripts (include)
 !*.sh
 
+# FreqHub CLI script (include)
+!freqhub
+
 # ============================================
 # DATABASE
 # ============================================

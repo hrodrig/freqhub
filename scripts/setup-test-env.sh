@@ -141,16 +141,16 @@ if [ ! -f "$PROJECT_ROOT/.env" ]; then
 fi
 
 if [ ! -f "$PROJECT_ROOT/backend/.env" ]; then
-    if [ -f "$PROJECT_ROOT/backend/.env.example" ]; then
-        info "Copying backend/.env.example to backend/.env..."
-        cp "$PROJECT_ROOT/backend/.env.example" "$PROJECT_ROOT/backend/.env"
+    if [ -f "$PROJECT_ROOT/backend/env.example" ]; then
+        info "Copying backend/env.example to backend/.env..."
+        cp "$PROJECT_ROOT/backend/env.example" "$PROJECT_ROOT/backend/.env"
     fi
 fi
 
 if [ ! -f "$PROJECT_ROOT/frontend/.env" ]; then
-    if [ -f "$PROJECT_ROOT/frontend/.env.example" ]; then
-        info "Copying frontend/.env.example to frontend/.env..."
-        cp "$PROJECT_ROOT/frontend/.env.example" "$PROJECT_ROOT/frontend/.env"
+    if [ -f "$PROJECT_ROOT/frontend/env.example" ]; then
+        info "Copying frontend/env.example to frontend/.env..."
+        cp "$PROJECT_ROOT/frontend/env.example" "$PROJECT_ROOT/frontend/.env"
     fi
 fi
 
@@ -221,7 +221,7 @@ info "✅ Environment setup completed"
 echo ""
 echo "Next steps:"
 echo "  1. Review and edit .env files if necessary"
-echo "  2. Run: docker-compose -f docker-compose.full.yml up -d"
+echo "  2. Run: docker compose -f docker-compose.full.yml up -d"
 echo "  3. Wait for all services to be healthy"
 echo "  4. Access http://localhost:3000 to use FreqHub"
 echo "  5. Add the bots using:"

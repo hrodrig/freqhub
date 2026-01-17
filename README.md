@@ -26,9 +26,39 @@
 
 ## 📦 Version
 
-**Current Version: 0.2.4**
+**Current Version: 0.2.8**
 
-This version includes:
+### What's New in 0.2.8
+
+This release introduces a **major feature update** with a complete Telegram-like command interface and significant infrastructure improvements:
+
+- **🎨 BotCommandChat Component**: Full Telegram-style command interface for interacting with bots
+  - 40+ Freqtrade commands supported with exact Telegram formatting
+  - Real-time command execution with formatted responses
+  - Quick command buttons with hover tooltips
+  - Clickable commands in help messages
+
+- **📊 Dashboard Enhancements**: 
+  - Added Win Rate column showing bot performance
+  - Cleaner interface (removed UUID display)
+  - Real-time updates when trades open/close
+
+- **🔧 Infrastructure Improvements**:
+  - Replaced Makefile with cross-platform `freqhub` bash script
+  - Updated all Docker Compose commands to V2 syntax
+  - Improved error handling and network error messages
+  - Better proxy service with path normalization
+
+- **📋 UI/UX Improvements**:
+  - Currency table format in Bot Detail page
+  - Enhanced command interface with auto-focus and text retention
+  - Multi-stage status updates for control commands
+
+For complete details, see the [CHANGELOG.md](CHANGELOG.md#028---2026-01-17).
+
+### Previous Features
+
+This version also includes:
 - Complete Authentication, Authorization, and Audit (AAA) system
 - Multi-user support with role-based access control (RBAC)
 - Comprehensive audit logging with username identification
@@ -117,9 +147,34 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 
 ## 🛠️ Installation
 
-### Quick Start with Makefile (Recommended)
+### Quick Start (Recommended)
 
-FreqHub includes a Makefile for easy automation. After cloning the repository:
+FreqHub includes both a **Makefile** and a **bash script** (`freqhub`) for easy automation. The bash script works on Windows with Git Bash, Linux, and macOS.
+
+**Using the bash script (works on Windows with Git Bash):**
+
+```bash
+# Complete setup (installs dependencies, creates .env files, sets up example DB)
+./freqhub setup
+
+# IMPORTANT: For local development, start Valkey and bots first
+./freqhub dev-bots  # Start Valkey and Freqtrade bots in Docker
+
+# Then start development servers (backend + frontend)
+./freqhub dev
+
+# Or start them separately
+./freqhub dev-backend  # Backend only
+./freqhub dev-frontend  # Frontend only
+
+# To stop bots and Valkey
+./freqhub dev-bots-stop
+
+# Show help
+./freqhub help
+```
+
+**Using Makefile (Linux/macOS only):**
 
 ```bash
 # Complete setup (installs dependencies, creates .env files, sets up example DB)
@@ -139,23 +194,23 @@ make dev-frontend  # Frontend only
 make dev-bots-stop
 ```
 
-**Available Makefile commands:**
-- `make help` - Show all available commands
-- `make setup` - Complete initial setup
-- `make install` - Install all dependencies
-- `make dev-bots` - Start Valkey and Freqtrade bots for local development
-- `make dev-bots-stop` - Stop Valkey and Freqtrade bots
-- `make dev-bots-logs` - Show logs from bots and Valkey
-- `make dev` - Start both backend and frontend (requires bots running)
-- `make build` - Build for production
-- `make docker-up` - Start with Docker Compose
-- `make lint` - Run linters
-- `make format` - Format code
-- `make test-websocket` - Test WebSocket connection
-- `make test-polling` - Test polling service
-- `make status` - Check service status
+**Available commands (same for both `./freqhub` and `make`):**
+- `help` - Show all available commands
+- `setup` - Complete initial setup
+- `install` - Install all dependencies
+- `dev-bots` - Start Valkey and Freqtrade bots for local development
+- `dev-bots-stop` - Stop Valkey and Freqtrade bots
+- `dev-bots-logs` - Show logs from bots and Valkey
+- `dev` - Start both backend and frontend (requires bots running)
+- `build` - Build for production
+- `docker-up` - Start with Docker Compose
+- `lint` - Run linters
+- `format` - Format code
+- `test-websocket` - Test WebSocket connection
+- `test-polling` - Test polling service
+- `status` - Check service status
 
-See `make help` for the complete list of commands.
+**Note for Windows users:** Use `./freqhub` instead of `make` (requires Git Bash). See `./freqhub help` for the complete list of commands.
 
 ### Manual Setup
 
@@ -168,7 +223,7 @@ cd freqhub
 
 # Backend setup
 cd backend
-cp .env.example .env
+cp env.example .env
 # Edit .env with your configuration (especially ENCRYPTION_KEY and JWT_SECRET)
 npm install  # or pnpm install / yarn install
 ```
@@ -189,7 +244,7 @@ npm run dev
 
 # Frontend setup (in another terminal)
 cd frontend
-cp .env.example .env
+cp env.example .env
 # Edit .env if needed (defaults work for local development)
 npm install  # or pnpm install / yarn install
 
@@ -213,7 +268,7 @@ Before running `make dev` or starting the backend manually, you need to start Va
 ```bash
 # Start Valkey and bots (required for local development)
 cd examples/docker
-docker-compose -f docker-compose-bots-valkey.yml up -d
+docker compose -f docker-compose-bots-valkey.yml up -d
 
 # Or use the Makefile command
 make dev-bots
@@ -261,19 +316,19 @@ make docker-build   # Build images
 
 **Manual - Build from source:**
 ```bash
-# Build and run with docker-compose (builds images locally)
-docker-compose -f docker-compose.full.yml up -d
+# Build and run with docker compose (builds images locally)
+docker compose -f docker-compose.full.yml up -d
 ```
 
 **Using published images from Docker Hub:**
 ```bash
 # Use pre-built images from Docker Hub (faster, no build required)
-docker-compose -f docker-compose.published.yml up -d
+docker compose -f docker-compose.published.yml up -d
 
 # Or with custom image tags
-FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.4 \
-FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.4 \
-docker-compose -f docker-compose.published.yml up -d
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.8 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.8 \
+docker compose -f docker-compose.published.yml up -d
 ```
 
 **Note**: `docker-compose.published.yml` uses pre-built images from Docker Hub. You can customize the image tags using environment variables if needed.
@@ -460,7 +515,7 @@ Create `backend/.env` from the example file:
 
 ```bash
 cd backend
-cp .env.example .env
+cp env.example .env
 ```
 
 The example file includes:
@@ -492,7 +547,7 @@ RATE_LIMIT_DEFAULT=60  # Default requests per window (default: 60)
 RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
 ```
 
-**⚠️ Important**: After copying `.env.example` to `.env`, edit the file and set secure values for:
+**⚠️ Important**: After copying `env.example` to `.env`, edit the file and set secure values for:
 - `ENCRYPTION_KEY` (must be at least 32 characters)
 - `JWT_SECRET` (must be at least 32 characters)
 
@@ -546,7 +601,7 @@ npm install recharts lucide-react
 npm install -D @types/node
 
 # Create .env file from example
-cp .env.example .env
+cp env.example .env
 # Edit .env if needed (defaults work for local development)
 
 npm run dev
@@ -570,7 +625,7 @@ Create `frontend/.env` from the example file:
 
 ```bash
 cd frontend
-cp .env.example .env
+cp env.example .env
 ```
 
 The example file includes:

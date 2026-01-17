@@ -6,9 +6,9 @@ This example shows how to run multiple Freqtrade instances using Docker Compose,
 
 ```
 examples/docker/
-├── docker-compose.yml      # Configuration for multiple instances + Valkey
-├── config.json.example     # Base Freqtrade configuration
-├── .env.example           # Environment variables template (copy to .env)
+├── docker-compose.yml     # Configuration for multiple instances + Valkey
+├── config.json.example    # Base Freqtrade configuration
+├── env.example            # Environment variables template (copy to .env)
 ├── setup.sh               # Setup script
 ├── README.md              # This documentation
 ├── freqtrade-data-1/      # Bot 1 data
@@ -52,7 +52,7 @@ cp config.json.example freqtrade-data-3/config.json
 Create a `.env` file from the example:
 
 ```bash
-cp .env.example .env
+cp env.example .env
 ```
 
 Edit `.env` and configure:
@@ -127,7 +127,7 @@ Or configure directly in each instance's `config.json` files.
 ### Start the Instances
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This will start:
@@ -155,22 +155,22 @@ All should respond: `{"status":"pong"}`
 
 ```bash
 # All bots
-docker-compose logs -f
+docker compose logs -f
 
 # Specific bot
-docker-compose logs -f freqtrade-bot-1
+docker compose logs -f freqtrade-bot-1
 ```
 
 ### Stop the Instances
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ### Stop and Remove Data
 
 ```bash
-docker-compose down -v
+docker compose down -v
 # This will remove volumes with data
 ```
 
@@ -367,8 +367,8 @@ lsof -i :8081
 
 ### Error: Cannot connect to API
 
-1. Verify the container is running: `docker-compose ps`
-2. Check logs: `docker-compose logs freqtrade-bot-1`
+1. Verify the container is running: `docker compose ps`
+2. Check logs: `docker compose logs freqtrade-bot-1`
 3. Verify that `api_server.enabled` is `true` in `config.json`
 4. Verify the port is correctly mapped
 

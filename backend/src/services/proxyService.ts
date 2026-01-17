@@ -151,6 +151,14 @@ export async function proxyRequest(
     bot.token_expires_at &&
     bot.token_expires_at > now;
 
+  // Import logger for debugging
+  const { appLogger } = await import('../utils/logger.js');
+  
+  // Remove leading slash from path when using baseURL (axios requirement)
+  // axios will add it automatically when concatenating with baseURL
+  const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  appLogger.info(`[PROXY] ${method} ${cleanPath} for bot ${botId} (hasValidToken: ${hasValidToken})`);
+
   let client: AxiosInstance;
 
   if (hasValidToken) {
@@ -190,20 +198,20 @@ export async function proxyRequest(
     let response;
     switch (method) {
       case 'GET':
-        response = await client.get(path);
+        response = await client.get(cleanPath);
         break;
       case 'POST':
-        response = await client.post(path, body);
+        response = await client.post(cleanPath, body);
         // Invalidate cache on write operations
         invalidateBotCache(botId);
         break;
       case 'PUT':
-        response = await client.put(path, body);
+        response = await client.put(cleanPath, body);
         // Invalidate cache on write operations
         invalidateBotCache(botId);
         break;
       case 'DELETE':
-        response = await client.delete(path);
+        response = await client.delete(cleanPath);
         // Invalidate cache on write operations
         invalidateBotCache(botId);
         break;
@@ -214,6 +222,15 @@ export async function proxyRequest(
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
+      // Handle network errors (socket hang up, ECONNREFUSED, etc.)
+      if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || 
+          error.message?.includes('socket hang up') || 
+          error.message?.includes('Network Error')) {
+        throw new Error(
+          `Network error connecting to Freqtrade bot at ${bot.api_url}: ${error.message || 'Connection closed unexpectedly'}`
+        );
+      }
+      
       // If 401, token might be expired, try to refresh
       if (error.response?.status === 401) {
         // Clear token and try to re-authenticate
@@ -238,21 +255,23 @@ export async function proxyRequest(
             },
           });
 
+          // Remove leading slash from path when using baseURL (axios requirement)
+          const retryCleanPath = path.startsWith('/') ? path.substring(1) : path;
           let retryResponse;
           switch (method) {
             case 'GET':
-              retryResponse = await retryClient.get(path);
+              retryResponse = await retryClient.get(retryCleanPath);
               break;
             case 'POST':
-              retryResponse = await retryClient.post(path, body);
+              retryResponse = await retryClient.post(retryCleanPath, body);
               invalidateBotCache(botId);
               break;
             case 'PUT':
-              retryResponse = await retryClient.put(path, body);
+              retryResponse = await retryClient.put(retryCleanPath, body);
               invalidateBotCache(botId);
               break;
             case 'DELETE':
-              retryResponse = await retryClient.delete(path);
+              retryResponse = await retryClient.delete(retryCleanPath);
               invalidateBotCache(botId);
               break;
           }
@@ -261,9 +280,37 @@ export async function proxyRequest(
         throw new Error('Authentication failed after token refresh');
       }
       const status = error.response?.status;
-      const message = (error.response?.data as { message?: string })?.message || error.message;
+      // For 502 errors, check if it's a valid error message from Freqtrade
+      // Freqtrade sometimes returns 502 with error messages (e.g., "No open order for trade_id.")
+      if (status === 502) {
+        const errorData = error.response?.data as { error?: string; detail?: string; message?: string } | undefined;
+        const errorMsg = errorData?.error || errorData?.detail || errorData?.message;
+        
+        // If there's a specific error message, it's likely a valid Freqtrade error response
+        if (errorMsg && errorMsg.includes('Error querying')) {
+          // Extract the actual error message after "Error querying ...: "
+          // Format: "Error querying /api/v1/trades/5/open-order: No open order for trade_id."
+          const match = errorMsg.match(/Error querying[^:]+:\s*(.+)/);
+          if (match && match[1]) {
+            throw new Error(match[1].trim());
+          }
+        }
+        
+        // If there's any error message, use it
+        if (errorMsg) {
+          throw new Error(errorMsg);
+        }
+        
+        // Otherwise, it's a real gateway error
+        throw new Error(
+          `Bad Gateway: Unable to connect to Freqtrade bot at ${bot.api_url}. The bot may be offline or unreachable.`
+        );
+      }
+      const message = (error.response?.data as { message?: string; detail?: string })?.message || 
+                      (error.response?.data as { message?: string; detail?: string })?.detail || 
+                      error.message;
       throw new Error(
-        `Freqtrade API error: ${status} - ${message}`
+        `Freqtrade API error: ${status || 'Network Error'} - ${message}`
       );
     }
     if (error instanceof Error) {

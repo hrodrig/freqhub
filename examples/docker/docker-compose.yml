@@ -35,13 +35,13 @@
 # 1. Configure your registry in .docker-publish-config (see .docker-publish-config.example)
 # 2. Publish images using: ./scripts/publish-docker-images.sh [version] [--latest]
 # 3. Update the IMAGE_REGISTRY, IMAGE_USERNAME, and IMAGE_VERSION variables below
-# 4. Run: docker-compose up -d
+# 4. Run: docker compose up -d
 #
 # Example:
 #   export IMAGE_REGISTRY=docker.io
 #   export IMAGE_USERNAME=your-username
 #   export IMAGE_VERSION=v0.2.0
-#   docker-compose up -d
+#   docker compose up -d
 
 name: freqhub-stack
 
@@ -66,7 +66,7 @@ services:
       start_period: 10s
 
   # FreqHub Backend (using published image)
-  freqhub-backend:
+  backend:
     image: ${IMAGE_REGISTRY:-docker.io}/${IMAGE_USERNAME:-freqhub}/freqhub-backend:${IMAGE_VERSION:-latest}
     container_name: freqhub-backend
     ports:
@@ -98,9 +98,9 @@ services:
       start_period: 40s
 
   # FreqHub Frontend (using published image)
-  freqhub-frontend:
+  frontend:
     image: ${IMAGE_REGISTRY:-docker.io}/${IMAGE_USERNAME:-freqhub}/freqhub-frontend:${IMAGE_VERSION:-latest}
-    container_name: freqhub-frontend
+    container_name: frontend
     ports:
       - "3000:80"
     environment:
@@ -111,7 +111,7 @@ services:
       - freqtrade-network
     restart: unless-stopped
     depends_on:
-      - freqhub-backend
+      - backend
 
   # Freqtrade Bot Instance 1
   freqtrade-bot-1:

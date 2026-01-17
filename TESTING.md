@@ -103,7 +103,7 @@ VITE_API_PROXY_TARGET=http://localhost:3001
 
 ```bash
 cd freqhub
-docker-compose -f docker-compose.full.yml up -d
+docker compose -f docker-compose.full.yml up -d
 ```
 
 This will start:
@@ -134,7 +134,7 @@ npm run dev
 **Terminal 3 - Freqtrade (Docker):**
 ```bash
 cd examples/docker
-docker-compose up -d
+docker compose up -d
 ```
 
 ## Verify Everything Works
@@ -288,38 +288,38 @@ curl -X POST http://localhost:3001/api/bots \
 ### View Logs from All Services
 
 ```bash
-docker-compose -f docker-compose.full.yml logs -f
+docker compose -f docker-compose.full.yml logs -f
 ```
 
 ### View Logs from a Specific Service
 
 ```bash
 # Backend
-docker-compose -f docker-compose.full.yml logs -f backend
+docker compose -f docker-compose.full.yml logs -f backend
 
 # Frontend
-docker-compose -f docker-compose.full.yml logs -f frontend
+docker compose -f docker-compose.full.yml logs -f frontend
 
 # Freqtrade 1
-docker-compose -f docker-compose.full.yml logs -f freqtrade-1
+docker compose -f docker-compose.full.yml logs -f freqtrade-1
 
 # Freqtrade 2
-docker-compose -f docker-compose.full.yml logs -f freqtrade-2
+docker compose -f docker-compose.full.yml logs -f freqtrade-2
 
 # Freqtrade 3
-docker-compose -f docker-compose.full.yml logs -f freqtrade-3
+docker compose -f docker-compose.full.yml logs -f freqtrade-3
 ```
 
 ### View Container Status
 
 ```bash
-docker-compose -f docker-compose.full.yml ps
+docker compose -f docker-compose.full.yml ps
 ```
 
 ### Verify Health Checks
 
 ```bash
-docker-compose -f docker-compose.full.yml ps
+docker compose -f docker-compose.full.yml ps
 ```
 
 All services should show "healthy" in the status column.
@@ -335,7 +335,7 @@ All services should show "healthy" in the status column.
    ```
 2. Check the logs:
    ```bash
-   docker-compose -f docker-compose.full.yml logs
+   docker compose -f docker-compose.full.yml logs
    ```
 3. Make sure Docker has enough resources allocated
 
@@ -379,7 +379,7 @@ All services should show "healthy" in the status column.
 ### Stop All Services
 
 ```bash
-docker-compose -f docker-compose.full.yml down
+docker compose -f docker-compose.full.yml down
 ```
 
 ### Remove Volumes and Data
@@ -387,7 +387,7 @@ docker-compose -f docker-compose.full.yml down
 ⚠️ **Warning**: This will delete all data, including configured bots and Freqtrade data.
 
 ```bash
-docker-compose -f docker-compose.full.yml down -v
+docker compose -f docker-compose.full.yml down -v
 rm -rf backend/data/*
 rm -rf examples/docker/freqtrade-data-1/*
 rm -rf examples/docker/freqtrade-data-2/*
@@ -399,8 +399,8 @@ rm -rf examples/docker/freqtrade-data-3/*
 If you've made code changes:
 
 ```bash
-docker-compose -f docker-compose.full.yml build --no-cache
-docker-compose -f docker-compose.full.yml up -d
+docker compose -f docker-compose.full.yml build --no-cache
+docker compose -f docker-compose.full.yml up -d
 ```
 
 ## Next Steps

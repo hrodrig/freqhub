@@ -1,0 +1,469 @@
+#!/bin/bash
+#
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# FreqHub CLI - Bash script replacement for Makefile
+# Provides simple commands for common development tasks
+#
+# ⚖️ DISCLAIMER
+# USE AT YOUR OWN RISK
+#
+# This software is provided "as is", without warranty of any kind, express or implied,
+# including but not limited to the warranties of merchantability, fitness for a particular
+# purpose and noninfringement. In no event shall the authors or copyright holders be liable
+# for any claim, damages or other liability, whether in an action of contract, tort or
+# otherwise, arising from, out of or in connection with the software or the use or other
+# dealings in the software.
+#
+# Trading cryptocurrencies involves substantial risk of loss and is not suitable for every
+# investor. The value of cryptocurrencies may fluctuate, and you may lose some or all of
+# your investment. Past performance is not indicative of future results.
+
+# Colors for output
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR" || exit 1
+
+# Function to show help
+show_help() {
+    echo -e "${BLUE}FreqHub CLI - Commands${NC}"
+    echo ""
+    echo "Usage: ./freqhub [command]"
+    echo ""
+    echo -e "${BLUE}Setup & Installation${NC}"
+    echo -e "  ${GREEN}install${NC}           Install all dependencies (backend + frontend)"
+    echo -e "  ${GREEN}setup${NC}             Complete initial setup (install + env files + example DB)"
+    echo ""
+    echo -e "${BLUE}Development${NC}"
+    echo -e "  ${GREEN}dev${NC}               Start development servers (backend + frontend in parallel)"
+    echo -e "  ${GREEN}dev-backend${NC}       Start backend development server only"
+    echo -e "  ${GREEN}dev-frontend${NC}      Start frontend development server only"
+    echo -e "  ${GREEN}dev-bots${NC}          Start Valkey and Freqtrade bots for local development"
+    echo -e "  ${GREEN}dev-bots-stop${NC}     Stop Valkey and Freqtrade bots"
+    echo -e "  ${GREEN}dev-bots-logs${NC}     Show logs from Valkey and Freqtrade bots"
+    echo ""
+    echo -e "${BLUE}Build${NC}"
+    echo -e "  ${GREEN}build${NC}             Build both backend and frontend for production"
+    echo -e "  ${GREEN}build-backend${NC}     Build backend only"
+    echo -e "  ${GREEN}build-frontend${NC}    Build frontend only"
+    echo ""
+    echo -e "${BLUE}Code Quality${NC}"
+    echo -e "  ${GREEN}lint${NC}              Run linters on both backend and frontend"
+    echo -e "  ${GREEN}lint-fix${NC}          Fix linting issues automatically"
+    echo -e "  ${GREEN}format${NC}            Format code with Prettier"
+    echo ""
+    echo -e "${BLUE}Testing${NC}"
+    echo -e "  ${GREEN}test${NC}              Run all tests"
+    echo -e "  ${GREEN}test-websocket${NC}    Test WebSocket connection"
+    echo -e "  ${GREEN}test-polling${NC}      Test polling service"
+    echo ""
+    echo -e "${BLUE}Database${NC}"
+    echo -e "  ${GREEN}db-migrate${NC}        Run database migrations"
+    echo -e "  ${GREEN}db-seed${NC}           Seed database with sample data"
+    echo -e "  ${GREEN}db-example${NC}        Create example database"
+    echo ""
+    echo -e "${BLUE}Docker${NC}"
+    echo -e "  ${GREEN}docker-up${NC}         Start all services with Docker Compose"
+    echo -e "  ${GREEN}docker-down${NC}       Stop all Docker services"
+    echo -e "  ${GREEN}docker-build${NC}      Build Docker images"
+    echo -e "  ${GREEN}docker-logs${NC}       Show Docker logs"
+    echo -e "  ${GREEN}docker-restart${NC}    Restart Docker services"
+    echo -e "  ${GREEN}docker-clean${NC}      Stop and remove all containers, networks, and volumes"
+    echo ""
+    echo -e "${BLUE}Cleanup${NC}"
+    echo -e "  ${GREEN}clean${NC}             Remove build artifacts and node_modules"
+    echo -e "  ${GREEN}clean-all${NC}         Remove everything including node_modules (use with caution)"
+    echo ""
+    echo -e "${BLUE}Utilities${NC}"
+    echo -e "  ${GREEN}status${NC}            Check service status"
+    echo -e "  ${GREEN}logs-backend${NC}      Show backend logs (if running in Docker)"
+    echo -e "  ${GREEN}logs-frontend${NC}     Show frontend logs (if running in Docker)"
+    echo ""
+    echo -e "  ${GREEN}help${NC}              Show this help message"
+}
+
+# Function: install
+cmd_install() {
+    echo -e "${BLUE}Installing backend dependencies...${NC}"
+    cd backend && npm install
+    echo -e "${BLUE}Installing frontend dependencies...${NC}"
+    cd ../frontend && npm install
+    echo -e "${BLUE}Installing frontend UI dependencies (Tailwind, Recharts, etc.)...${NC}"
+    npm install -D tailwindcss postcss autoprefixer @types/node || true
+    npm install recharts lucide-react || true
+    if [ ! -f tailwind.config.js ] && [ ! -f tailwind.config.ts ]; then
+        echo -e "${BLUE}Initializing Tailwind CSS...${NC}"
+        npx tailwindcss init -p || echo -e "${YELLOW}⚠ Tailwind init skipped (may already exist)${NC}"
+    fi
+    echo -e "${GREEN}✓ All dependencies installed${NC}"
+}
+
+# Function: setup
+cmd_setup() {
+    echo -e "${BLUE}Setting up FreqHub...${NC}"
+    cmd_install
+    echo -e "${BLUE}Creating .env files...${NC}"
+    if [ ! -f backend/.env ]; then
+        cp backend/env.example backend/.env && \
+        echo -e "${YELLOW}⚠ Created backend/.env from env.example - please update with your values${NC}"
+    fi
+    if [ ! -f frontend/.env ]; then
+        cp frontend/env.example frontend/.env 2>/dev/null || echo -e "${YELLOW}⚠ No frontend/env.example found${NC}"
+    fi
+    if [ ! -f backend/data/freqhub.db ]; then
+        cp backend/data/freqhub.db.example backend/data/freqhub.db 2>/dev/null || \
+        echo -e "${YELLOW}⚠ No example database found - database will be created on first run${NC}"
+    fi
+    echo -e "${GREEN}✓ Setup complete!${NC}"
+    echo -e "${YELLOW}Don't forget to:${NC}"
+    echo "  1. Update backend/.env with your configuration"
+    echo "  2. Set ENCRYPTION_KEY to a secure value (min 32 characters)"
+}
+
+# Function: dev-bots
+cmd_dev_bots() {
+    echo -e "${BLUE}Starting Valkey and Freqtrade bots...${NC}"
+    echo -e "${YELLOW}This will start:${NC}"
+    echo -e "${YELLOW}  - Valkey (cache) on localhost:6379${NC}"
+    echo -e "${YELLOW}  - Freqtrade Bot 1 on localhost:8080${NC}"
+    echo -e "${YELLOW}  - Freqtrade Bot 2 on localhost:8081${NC}"
+    echo -e "${YELLOW}  - Freqtrade Bot 3 on localhost:8082${NC}"
+    cd examples/docker && docker compose -f docker-compose-bots-valkey.yml up -d
+    echo -e "${GREEN}✓ Bots and Valkey started${NC}"
+    echo -e "${YELLOW}To stop: ./freqhub dev-bots-stop${NC}"
+}
+
+# Function: dev-bots-stop
+cmd_dev_bots_stop() {
+    echo -e "${BLUE}Stopping Valkey and Freqtrade bots...${NC}"
+    cd examples/docker && docker compose -f docker-compose-bots-valkey.yml down
+    echo -e "${GREEN}✓ Bots and Valkey stopped${NC}"
+}
+
+# Function: dev-bots-logs
+cmd_dev_bots_logs() {
+    cd examples/docker && docker compose -f docker-compose-bots-valkey.yml logs -f
+}
+
+# Function: dev
+cmd_dev() {
+    echo -e "${BLUE}Starting development servers...${NC}"
+    echo -e "${YELLOW}Backend: http://localhost:3001${NC}"
+    echo -e "${YELLOW}Frontend: http://localhost:3000${NC}"
+    echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
+    echo ""
+    echo -e "${YELLOW}⚠ Note: Make sure Valkey and bots are running first:${NC}"
+    echo -e "${YELLOW}   ./freqhub dev-bots${NC}"
+    echo ""
+    trap 'kill 0' EXIT
+    cd backend && npm run dev &
+    cd frontend && npm run dev &
+    wait
+}
+
+# Function: dev-backend
+cmd_dev_backend() {
+    echo -e "${BLUE}Starting backend development server...${NC}"
+    echo -e "${YELLOW}⚠ Note: Make sure Valkey is running first:${NC}"
+    echo -e "${YELLOW}   ./freqhub dev-bots${NC}"
+    cd backend && npm run dev
+}
+
+# Function: dev-frontend
+cmd_dev_frontend() {
+    echo -e "${BLUE}Starting frontend development server...${NC}"
+    cd frontend && npm run dev
+}
+
+# Function: build
+cmd_build() {
+    echo -e "${BLUE}Building backend...${NC}"
+    cd backend && npm run build
+    echo -e "${BLUE}Building frontend...${NC}"
+    cd ../frontend && npm run build
+    echo -e "${GREEN}✓ Build complete!${NC}"
+}
+
+# Function: build-backend
+cmd_build_backend() {
+    echo -e "${BLUE}Building backend...${NC}"
+    cd backend && npm run build
+}
+
+# Function: build-frontend
+cmd_build_frontend() {
+    echo -e "${BLUE}Building frontend...${NC}"
+    cd frontend && npm run build
+}
+
+# Function: lint
+cmd_lint() {
+    echo -e "${BLUE}Linting backend...${NC}"
+    cd backend && npm run lint
+    echo -e "${BLUE}Linting frontend...${NC}"
+    cd ../frontend && npm run lint 2>/dev/null || echo -e "${YELLOW}⚠ Frontend linting not configured${NC}"
+}
+
+# Function: lint-fix
+cmd_lint_fix() {
+    echo -e "${BLUE}Fixing linting issues...${NC}"
+    cd backend && npm run lint:fix
+    cd ../frontend && npm run lint:fix 2>/dev/null || echo -e "${YELLOW}⚠ Frontend lint:fix not configured${NC}"
+}
+
+# Function: format
+cmd_format() {
+    echo -e "${BLUE}Formatting code...${NC}"
+    cd backend && npm run format
+    cd ../frontend && npm run format 2>/dev/null || echo -e "${YELLOW}⚠ Frontend formatting not configured${NC}"
+}
+
+# Function: test
+cmd_test() {
+    echo -e "${BLUE}Running tests...${NC}"
+    echo -e "${YELLOW}⚠ Test suite not yet implemented${NC}"
+}
+
+# Function: test-websocket
+cmd_test_websocket() {
+    echo -e "${BLUE}Testing WebSocket connection...${NC}"
+    cd backend && npm run test:websocket
+}
+
+# Function: test-polling
+cmd_test_polling() {
+    echo -e "${BLUE}Testing polling service...${NC}"
+    cd backend && ./scripts/test-polling.sh
+}
+
+# Function: db-migrate
+cmd_db_migrate() {
+    echo -e "${BLUE}Running database migrations...${NC}"
+    cd backend && npm run db:migrate
+}
+
+# Function: db-seed
+cmd_db_seed() {
+    echo -e "${BLUE}Seeding database...${NC}"
+    cd backend && npm run db:seed
+}
+
+# Function: db-example
+cmd_db_example() {
+    echo -e "${BLUE}Creating example database...${NC}"
+    cd backend && npm run db:example
+}
+
+# Function: docker-up
+cmd_docker_up() {
+    echo -e "${BLUE}Starting Docker services...${NC}"
+    docker compose -f docker-compose.full.yml up -d
+    echo -e "${GREEN}✓ Services started${NC}"
+    echo -e "${YELLOW}Backend: http://localhost:3001${NC}"
+    echo -e "${YELLOW}Frontend: http://localhost:3000${NC}"
+}
+
+# Function: docker-down
+cmd_docker_down() {
+    echo -e "${BLUE}Stopping Docker services...${NC}"
+    docker compose -f docker-compose.full.yml down
+    echo -e "${GREEN}✓ Services stopped${NC}"
+}
+
+# Function: docker-build
+cmd_docker_build() {
+    echo -e "${BLUE}Building Docker images...${NC}"
+    docker compose -f docker-compose.full.yml build
+}
+
+# Function: docker-logs
+cmd_docker_logs() {
+    docker compose -f docker-compose.full.yml logs -f
+}
+
+# Function: docker-restart
+cmd_docker_restart() {
+    echo -e "${BLUE}Restarting Docker services...${NC}"
+    docker compose -f docker-compose.full.yml restart
+}
+
+# Function: docker-clean
+cmd_docker_clean() {
+    echo -e "${YELLOW}⚠ This will remove all containers, networks, and volumes${NC}"
+    docker compose -f docker-compose.full.yml down -v --remove-orphans
+    echo -e "${GREEN}✓ Cleaned up${NC}"
+}
+
+# Function: clean
+cmd_clean() {
+    echo -e "${BLUE}Cleaning build artifacts...${NC}"
+    rm -rf backend/dist
+    rm -rf frontend/dist
+    echo -e "${GREEN}✓ Build artifacts removed${NC}"
+}
+
+# Function: clean-all
+cmd_clean_all() {
+    cmd_clean
+    echo -e "${YELLOW}⚠ Removing node_modules...${NC}"
+    rm -rf backend/node_modules
+    rm -rf frontend/node_modules
+    echo -e "${GREEN}✓ Everything cleaned${NC}"
+}
+
+# Function: status
+cmd_status() {
+    echo -e "${BLUE}Checking service status...${NC}"
+    echo -e "${YELLOW}Backend:${NC}"
+    if curl -s http://localhost:3001/api/healthz > /dev/null 2>&1; then
+        echo -e "  ${GREEN}✓ Running${NC}"
+    else
+        echo -e "  ${YELLOW}✗ Not running${NC}"
+    fi
+    echo -e "${YELLOW}Frontend:${NC}"
+    if curl -s http://localhost:3000 > /dev/null 2>&1; then
+        echo -e "  ${GREEN}✓ Running${NC}"
+    else
+        echo -e "  ${YELLOW}✗ Not running${NC}"
+    fi
+}
+
+# Function: logs-backend
+cmd_logs_backend() {
+    docker compose -f docker-compose.full.yml logs -f backend
+}
+
+# Function: logs-frontend
+cmd_logs_frontend() {
+    docker compose -f docker-compose.full.yml logs -f frontend
+}
+
+# Main command dispatcher
+main() {
+    case "${1:-help}" in
+        help|--help|-h)
+            show_help
+            ;;
+        install)
+            cmd_install
+            ;;
+        setup)
+            cmd_setup
+            ;;
+        dev)
+            cmd_dev
+            ;;
+        dev-backend)
+            cmd_dev_backend
+            ;;
+        dev-frontend)
+            cmd_dev_frontend
+            ;;
+        dev-bots)
+            cmd_dev_bots
+            ;;
+        dev-bots-stop)
+            cmd_dev_bots_stop
+            ;;
+        dev-bots-logs)
+            cmd_dev_bots_logs
+            ;;
+        build)
+            cmd_build
+            ;;
+        build-backend)
+            cmd_build_backend
+            ;;
+        build-frontend)
+            cmd_build_frontend
+            ;;
+        lint)
+            cmd_lint
+            ;;
+        lint-fix)
+            cmd_lint_fix
+            ;;
+        format)
+            cmd_format
+            ;;
+        test)
+            cmd_test
+            ;;
+        test-websocket)
+            cmd_test_websocket
+            ;;
+        test-polling)
+            cmd_test_polling
+            ;;
+        db-migrate)
+            cmd_db_migrate
+            ;;
+        db-seed)
+            cmd_db_seed
+            ;;
+        db-example)
+            cmd_db_example
+            ;;
+        docker-up)
+            cmd_docker_up
+            ;;
+        docker-down)
+            cmd_docker_down
+            ;;
+        docker-build)
+            cmd_docker_build
+            ;;
+        docker-logs)
+            cmd_docker_logs
+            ;;
+        docker-restart)
+            cmd_docker_restart
+            ;;
+        docker-clean)
+            cmd_docker_clean
+            ;;
+        clean)
+            cmd_clean
+            ;;
+        clean-all)
+            cmd_clean_all
+            ;;
+        status)
+            cmd_status
+            ;;
+        logs-backend)
+            cmd_logs_backend
+            ;;
+        logs-frontend)
+            cmd_logs_frontend
+            ;;
+        *)
+            echo -e "${YELLOW}Unknown command: $1${NC}"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function
+main "$@"

@@ -23,8 +23,10 @@ import { websocketService, type FreqHubEvent } from '../services/websocket.servi
 import { Link } from 'react-router-dom';
 import { Bot, Activity, CheckCircle2, XCircle, Loader2, Calendar, Play, Square, Pause, RotateCcw, RefreshCw, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
+import { SparklineChart } from '../components/SparklineChart';
 
 type TimePeriod = '24h' | '7d' | '30d' | 'all';
+type TradingMode = 'live' | 'dry_run';
 
 interface BotStatus {
   botId: string;
@@ -38,9 +40,12 @@ interface BotStatus {
     trade_count?: number;
     profit_closed_coin?: number;
     profit_closed_percent?: number;
+    winrate?: number; // Win rate as ratio (0.0 to 1.0)
+    open_trades?: Array<{ pair: string; open_date: string; amount: number }>; // Details of open trades
   } | null;
   error?: string;
   isOnline?: boolean; // Whether bot responds to ping
+  dailyData?: Array<{ date: string; profit: number }>; // Historical data for sparkline
 }
 
 export function Dashboard() {
@@ -49,6 +54,7 @@ export function Dashboard() {
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [profitTimePeriod, setProfitTimePeriod] = useState<TimePeriod>('all');
   const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
+  const [activeTab, setActiveTab] = useState<TradingMode>('live'); // Default to Live Trading
 
   useEffect(() => {
     fetchBots();
@@ -91,6 +97,34 @@ export function Dashboard() {
     ]);
   };
 
+  // Function to load daily profit data for sparkline (last 7 days)
+  const loadDailyData = useCallback(async (botId: string): Promise<Array<{ date: string; profit: number }>> => {
+    try {
+      const dailyData = await withTimeout(
+        proxyApi.get(botId, 'api/v1/daily') as Promise<Array<{ date: string; profit: number }>>,
+        5000
+      ).catch(() => null);
+
+      if (!dailyData || !Array.isArray(dailyData)) {
+        return [];
+      }
+
+      // Get last 7 days, sorted by date
+      const sorted = dailyData
+        .map((item) => ({
+          date: item.date,
+          profit: typeof item.profit === 'number' ? item.profit : 0,
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(-7);
+
+      return sorted;
+    } catch (err) {
+      console.error(`Failed to load daily data for bot ${botId}:`, err);
+      return [];
+    }
+  }, []);
+
   // Function to load bot statuses (reusable)
   // If updateProgressively is true, updates are applied as they complete (non-blocking)
   const loadBotStatuses = useCallback(
@@ -123,18 +157,20 @@ export function Dashboard() {
             };
           }
 
-          // Get bot state, open trades, and profit in parallel (only if bot is online)
+          // Get bot state, open trades, profit, and daily data in parallel (only if bot is online)
           // Use shorter timeout (5 seconds) for these requests
-          const [configData, openTrades, profit] = await Promise.allSettled([
+          const [configData, openTrades, profit, dailyData] = await Promise.allSettled([
             withTimeout(proxyApi.get(bot.id, 'api/v1/show_config'), 5000).catch(() => null),
             withTimeout(proxyApi.get(bot.id, 'api/v1/status'), 5000).catch(() => []),
             withTimeout(proxyApi.get(bot.id, 'api/v1/profit'), 5000).catch(() => null),
+            loadDailyData(bot.id).catch(() => []),
           ]).then((results) =>
             results.map((r) => (r.status === 'fulfilled' ? r.value : null))
           );
 
           const tradesArray = Array.isArray(openTrades) ? openTrades : [];
-          const profitData = profit as { profit_closed_coin?: number; profit_closed_percent?: number } | null;
+          const profitData = profit as { profit_closed_coin?: number; profit_closed_percent?: number; winrate?: number } | null;
+          const historicalData = dailyData as Array<{ date: string; profit: number }> | null;
           
           // Extract bot configuration data
           const config = configData && typeof configData === 'object' ? configData as {
@@ -154,6 +190,15 @@ export function Dashboard() {
           const timeframe = config?.timeframe;
           const stoploss = config?.stoploss;
 
+          // Extract open trades details for display
+          const openTradesDetails = tradesArray
+            .filter((t: any) => t.is_open !== false) // Filter only open trades
+            .map((t: any) => ({
+              pair: t.pair || 'Unknown',
+              open_date: t.open_date || 'Unknown',
+              amount: t.amount || 0,
+            }));
+
           const status = {
             state: botState, // RUNNING, STOPPED, PAUSED, etc.
             runmode: runmode, // dry_run or live
@@ -162,10 +207,12 @@ export function Dashboard() {
             timeframe: timeframe,
             stoploss: stoploss,
             trade_count: tradesArray.length,
+            open_trades: openTradesDetails, // Store trade details
             profit_closed_coin: profitData?.profit_closed_coin,
             profit_closed_percent: profitData?.profit_closed_percent,
+            winrate: profitData?.winrate, // Win rate as ratio (0.0 to 1.0)
           };
-          return { botId: bot.id, status, isOnline: true };
+          return { botId: bot.id, status, isOnline: true, dailyData: historicalData || [] };
         } catch (err) {
           return {
             botId: bot.id,
@@ -225,7 +272,7 @@ export function Dashboard() {
         setIsLoadingStatus(false);
       }
     },
-    [bots]
+    [bots, loadDailyData]
   );
 
   // Load initial statuses only (WebSockets handle real-time updates)
@@ -423,7 +470,7 @@ export function Dashboard() {
         });
       } else if (event.type === 'bot_profit_update') {
         // Profit updates from /api/v1/profit endpoint
-        const profitData = event.data as { profit_closed_coin?: number; profit_closed_percent?: number };
+        const profitData = event.data as { profit_closed_coin?: number; profit_closed_percent?: number; winrate?: number };
         
         setBotStatuses((prev) => {
           const existing = prev.find((s) => s.botId === event.botId);
@@ -436,6 +483,7 @@ export function Dashboard() {
                       ...existing.status,
                       profit_closed_coin: profitData.profit_closed_coin,
                       profit_closed_percent: profitData.profit_closed_percent,
+                      winrate: profitData.winrate,
                     },
                   }
                 : s
@@ -450,6 +498,7 @@ export function Dashboard() {
                       trade_count: 0,
                       profit_closed_coin: profitData.profit_closed_coin,
                       profit_closed_percent: profitData.profit_closed_percent,
+                      winrate: profitData.winrate,
                     },
                   }
                 : s
@@ -503,6 +552,20 @@ export function Dashboard() {
 
   // All hooks and calculations must be before any early returns
   const enabledBots = useMemo(() => bots.filter((b) => b.isEnabled), [bots]);
+  
+  // Filter bots by trading mode
+  const filteredBots = useMemo(() => {
+    return enabledBots.filter((bot) => {
+      const status = botStatuses.find((s) => s.botId === bot.id);
+      const runmode = status?.status?.runmode;
+      if (activeTab === 'live') {
+        return runmode === 'live' || runmode === undefined; // Default to live if unknown
+      } else {
+        return runmode === 'dry_run';
+      }
+    });
+  }, [enabledBots, botStatuses, activeTab]);
+
   const totalTrades = useMemo(() => {
     return botStatuses.reduce((sum, s) => {
       return sum + (s.status?.trade_count || 0);
@@ -640,11 +703,38 @@ export function Dashboard() {
           </Card>
         </div>
 
-        {/* Bot Status */}
+        {/* Bot Status with Tabs */}
         <Card>
           <CardHeader>
-            <CardTitle>Bot Status</CardTitle>
-            <CardDescription>Real-time status of all enabled bots</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Bot Status</CardTitle>
+                <CardDescription>Real-time status of all enabled bots</CardDescription>
+              </div>
+            </div>
+            {/* Tabs */}
+            <div className="flex gap-2 mt-4 border-b border-border">
+              <button
+                onClick={() => setActiveTab('live')}
+                className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+                  activeTab === 'live'
+                    ? 'border-green-500 text-green-500'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                💰 Live Trading
+              </button>
+              <button
+                onClick={() => setActiveTab('dry_run')}
+                className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+                  activeTab === 'dry_run'
+                    ? 'border-yellow-500 text-yellow-500'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                🔶 Dry Run
+              </button>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoadingStatus ? (
@@ -652,228 +742,190 @@ export function Dashboard() {
                 <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
                 <span className="text-muted-foreground">Loading statuses...</span>
               </div>
-            ) : enabledBots.length === 0 ? (
+            ) : filteredBots.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No enabled bots found.</p>
+                <p>No {activeTab === 'live' ? 'live trading' : 'dry run'} bots found.</p>
                 <Link to="/bots" className="text-primary hover:underline mt-2 inline-block">
                   Manage bots
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
-                {enabledBots.map((bot) => {
-                  const status = botStatuses.find((s) => s.botId === bot.id);
-                  return (
-                    <div
-                      key={bot.id}
-                      className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div>
-                              <Link
-                                to={`/bots/${bot.id}`}
-                                className="text-lg font-semibold text-foreground hover:text-primary transition-colors"
-                              >
-                                {bot.name}
-                              </Link>
-                              <p className="text-xs text-muted-foreground font-mono mt-0.5">{bot.id}</p>
-                            </div>
-                            {(() => {
-                              if (!status) {
-                                return (
-                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading...
-                                  </span>
-                                );
-                              }
-                              const connectivity = getConnectivityStatus(status);
-                              const ConnectivityIcon = connectivity.icon;
-                              const stateDisplay = getBotStateDisplay(status);
-                              const runmode = status.status?.runmode;
-                              return (
-                                <div className="flex items-center gap-2">
-                                  <span className={`flex items-center gap-1 text-xs ${connectivity.color}`}>
-                                    <ConnectivityIcon className="h-4 w-4" />
-                                    {connectivity.text}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Strategy</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Exchange</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Pair/Timeframe</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Trades</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">P&L</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Win Rate</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Last Week</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBots.map((bot) => {
+                      const status = botStatuses.find((s) => s.botId === bot.id);
+                      const connectivity = status ? getConnectivityStatus(status) : null;
+                      const ConnectivityIcon = connectivity?.icon || XCircle;
+                      const stateDisplay = status ? getBotStateDisplay(status) : null;
+                      const runmode = status?.status?.runmode;
+
+                      return (
+                        <tr
+                          key={bot.id}
+                          className="border-b border-border hover:bg-muted/50 transition-colors"
+                        >
+                          <td className="py-3 px-4">
+                            <Link
+                              to={`/bots/${bot.id}`}
+                              className="font-semibold text-foreground hover:text-primary transition-colors"
+                            >
+                              {bot.name}
+                            </Link>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {status ? (
+                                <>
+                                  <span className={`flex items-center gap-1 text-xs ${connectivity?.color || 'text-gray-500'}`}>
+                                    <ConnectivityIcon className="h-3 w-3" />
+                                    {connectivity?.text || 'Unknown'}
                                   </span>
                                   {stateDisplay && (
                                     <>
                                       <span className="text-xs text-muted-foreground">•</span>
                                       <span className={`flex items-center gap-1 text-xs ${stateDisplay.color}`}>
-                                        <stateDisplay.icon className="h-4 w-4" />
+                                        <stateDisplay.icon className="h-3 w-3" />
                                         {stateDisplay.text}
                                       </span>
                                     </>
                                   )}
-                                  {runmode && (
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded ${
-                                        runmode === 'dry_run'
-                                          ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
-                                          : 'bg-green-500/20 text-green-500 border border-green-500/30'
-                                      }`}
-                                    >
-                                      {runmode === 'dry_run' ? '🔶 Dry Run' : '💰 Live Trading'}
-                                    </span>
+                                </>
+                              ) : (
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Loading...
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {status?.status?.exchange || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            <div className="font-mono text-xs">
+                              {status?.status?.timeframe || '-'}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">{status?.status?.trade_count || 0}</span>
+                                {status?.status?.trade_count && status.status.trade_count > 0 && (
+                                  <span 
+                                    className="text-xs text-muted-foreground cursor-help" 
+                                    title="Open trades according to Freqtrade. May differ from exchange if not synchronized. Click to see details."
+                                  >
+                                    ⓘ
+                                  </span>
+                                )}
+                              </div>
+                              {status?.status?.open_trades && status.status.open_trades.length > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  {status.status.open_trades.slice(0, 2).map((t, idx) => (
+                                    <div key={idx} className="truncate max-w-[150px]" title={`${t.pair} - ${t.open_date}`}>
+                                      {t.pair}
+                                    </div>
+                                  ))}
+                                  {status.status.open_trades.length > 2 && (
+                                    <div className="text-xs">+{status.status.open_trades.length - 2} more</div>
                                   )}
                                 </div>
-                              );
-                            })()}
-                          </div>
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <p>
-                              <span className="font-medium">URL:</span> {bot.apiUrl}
-                            </p>
-                            {status?.error ? (
-                              <p className="text-red-500">Error: {status.error}</p>
-                            ) : status?.status ? (
-                              <>
-                                {status.status.state && (
-                                  <p>
-                                    <span className="font-medium">State:</span>{' '}
-                                    <span className="font-mono text-xs">{status.status.state}</span>
-                                  </p>
-                                )}
-                                {status.status.runmode && (
-                                  <p>
-                                    <span className="font-medium">Mode:</span>{' '}
-                                    <span
-                                      className={
-                                        status.status.runmode === 'dry_run'
-                                          ? 'text-yellow-500 font-semibold'
-                                          : 'text-green-500 font-semibold'
-                                      }
-                                    >
-                                      {status.status.runmode === 'dry_run' ? '🔶 Dry Run' : '💰 Live Trading'}
-                                    </span>
-                                  </p>
-                                )}
-                                {status.status.exchange && (
-                                  <p>
-                                    <span className="font-medium">Exchange:</span>{' '}
-                                    <span className="font-semibold">{status.status.exchange}</span>
-                                  </p>
-                                )}
-                                {status.status.strategy && (
-                                  <p>
-                                    <span className="font-medium">Strategy:</span>{' '}
-                                    <span className="font-mono text-sm">{status.status.strategy}</span>
-                                  </p>
-                                )}
-                                {status.status.timeframe && (
-                                  <p>
-                                    <span className="font-medium">Timeframe:</span>{' '}
-                                    <span className="font-mono text-sm">{status.status.timeframe}</span>
-                                  </p>
-                                )}
-                                {status.status.stoploss !== undefined && (
-                                  <p>
-                                    <span className="font-medium">Stoploss:</span>{' '}
-                                    <span className="text-red-500 font-semibold">
-                                      {status.status.stoploss > 0 ? '+' : ''}{status.status.stoploss.toFixed(2)}%
-                                    </span>
-                                  </p>
-                                )}
-                                <p>
-                                  <span className="font-medium">Open Trades:</span>{' '}
-                                  {status.status.trade_count || 0}
-                                </p>
-                                {status.status.profit_closed_coin !== undefined && (
-                                  <p>
-                                    <span className="font-medium">Profit:</span>{' '}
-                                    <span
-                                      className={
-                                        status.status.profit_closed_coin >= 0
-                                          ? 'text-green-500'
-                                          : 'text-red-500'
-                                      }
-                                    >
-                                      ${status.status.profit_closed_coin.toFixed(2)}
-                                    </span>
-                                  </p>
-                                )}
-                              </>
-                            ) : null}
-                          </div>
-                        </div>
-                        
-                        {/* Quick Actions */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleBotAction(bot.id, 'start')}
-                            disabled={!!actionLoading[bot.id] || !status?.isOnline || normalizeState(status?.status?.state) === 'RUNNING'}
-                            className="p-2 text-green-500 hover:bg-green-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Start bot"
-                          >
-                            {actionLoading[bot.id] === 'start' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {status?.status?.profit_closed_coin !== undefined ? (
+                              <span
+                                className={`font-semibold ${
+                                  status.status.profit_closed_coin >= 0
+                                    ? 'text-green-500'
+                                    : 'text-red-500'
+                                }`}
+                              >
+                                ${status.status.profit_closed_coin.toFixed(2)}
+                              </span>
                             ) : (
-                              <Play className="h-4 w-4" />
+                              <span className="text-muted-foreground">-</span>
                             )}
-                          </button>
-                          <button
-                            onClick={() => handleBotAction(bot.id, 'stop')}
-                            disabled={!!actionLoading[bot.id] || !status?.isOnline || normalizeState(status?.status?.state) === 'STOPPED'}
-                            className="p-2 text-red-500 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Stop bot"
-                          >
-                            {actionLoading[bot.id] === 'stop' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            {status?.status?.winrate !== undefined && status.status.winrate !== null ? (
+                              <span className="font-semibold">
+                                {(status.status.winrate * 100).toFixed(1)}%
+                              </span>
                             ) : (
-                              <Square className="h-4 w-4" />
+                              <span className="text-muted-foreground">-</span>
                             )}
-                          </button>
-                          <button
-                            onClick={() => handleBotAction(bot.id, 'pause')}
-                            disabled={!!actionLoading[bot.id] || !status?.isOnline || normalizeState(status?.status?.state) !== 'RUNNING'}
-                            className="p-2 text-yellow-500 hover:bg-yellow-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Pause bot"
-                          >
-                            {actionLoading[bot.id] === 'pause' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Pause className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleBotAction(bot.id, 'reload_config')}
-                            disabled={!!actionLoading[bot.id] || !status?.isOnline || normalizeState(status?.status?.state) === 'STOPPED'}
-                            className="p-2 text-blue-500 hover:bg-blue-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Reload configuration (only available when bot is running)"
-                          >
-                            {actionLoading[bot.id] === 'reload_config' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RotateCcw className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleRefreshBot(bot.id)}
-                            disabled={!!actionLoading[bot.id]}
-                            className="p-2 text-blue-500 hover:bg-blue-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Refresh this bot"
-                          >
-                            {actionLoading[bot.id] === 'refresh' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-4 w-4" />
-                            )}
-                          </button>
-                          <Link
-                            to={`/bots/${bot.id}`}
-                            className="p-2 text-muted-foreground hover:bg-muted rounded transition-colors"
-                            title="View details"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                          </td>
+                          <td className="py-3 px-4">
+                            <SparklineChart data={status?.dailyData || []} width={150} height={40} />
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => handleBotAction(bot.id, 'start')}
+                                disabled={!!actionLoading[bot.id] || !status?.isOnline || normalizeState(status?.status?.state) === 'RUNNING'}
+                                className="p-1.5 text-green-500 hover:bg-green-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Start bot"
+                              >
+                                {actionLoading[bot.id] === 'start' ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Play className="h-3 w-3" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleBotAction(bot.id, 'stop')}
+                                disabled={!!actionLoading[bot.id] || !status?.isOnline || normalizeState(status?.status?.state) === 'STOPPED'}
+                                className="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Stop bot"
+                              >
+                                {actionLoading[bot.id] === 'stop' ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Square className="h-3 w-3" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleBotAction(bot.id, 'pause')}
+                                disabled={!!actionLoading[bot.id] || !status?.isOnline || normalizeState(status?.status?.state) !== 'RUNNING'}
+                                className="p-1.5 text-yellow-500 hover:bg-yellow-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Pause bot"
+                              >
+                                {actionLoading[bot.id] === 'pause' ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Pause className="h-3 w-3" />
+                                )}
+                              </button>
+                              <Link
+                                to={`/bots/${bot.id}`}
+                                className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors"
+                                title="View details"
+                              >
+                                <Settings className="h-3 w-3" />
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>

@@ -20,6 +20,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, AlertCircle, Play, Square, Pause, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
+import { BotCommandChat } from '../components/BotCommandChat.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
 import type { Bot } from '../types/bot.js';
 import type { Trade } from '../types/trade.js';
@@ -341,16 +342,29 @@ export function BotDetail() {
                 </div>
                 {balance.currencies && balance.currencies.length > 0 && (
                   <div className="pt-4 border-t border-border">
-                    <h3 className="font-medium mb-2">Currencies</h3>
-                    <ul className="space-y-1 text-sm">
-                      {balance.currencies.map((curr) => (
-                        <li key={curr.currency}>
-                          <span className="font-medium">{curr.currency}:</span>{' '}
-                          {(curr.free ?? 0).toFixed(8)} free, {(curr.used ?? 0).toFixed(8)} used,{' '}
-                          {(curr.total ?? 0).toFixed(8)} total
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="font-medium mb-3">Currencies</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-2 font-medium">Token</th>
+                            <th className="text-right py-2 px-2 font-medium">Free</th>
+                            <th className="text-right py-2 px-2 font-medium">Used</th>
+                            <th className="text-right py-2 px-2 font-medium">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {balance.currencies.map((curr) => (
+                            <tr key={curr.currency} className="border-b border-border/50">
+                              <td className="py-2 px-2 font-medium">{curr.currency}</td>
+                              <td className="py-2 px-2 text-right">{(curr.free ?? 0).toFixed(8)}</td>
+                              <td className="py-2 px-2 text-right">{(curr.used ?? 0).toFixed(8)}</td>
+                              <td className="py-2 px-2 text-right">{(curr.total ?? 0).toFixed(8)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -428,6 +442,18 @@ export function BotDetail() {
                 ))}
               </ul>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Bot Command Chat */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Bot Commands</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[600px]">
+              {bot && <BotCommandChat botId={bot.id} botName={bot.name} />}
+            </div>
           </CardContent>
         </Card>
       </div>
