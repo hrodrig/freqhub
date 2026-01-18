@@ -29,10 +29,13 @@ import { Login } from './pages/Login.js';
 import { AuditLogs } from './pages/AuditLogs.js';
 import { Profile } from './pages/Profile.js';
 import { UserManagement } from './pages/UserManagement.js';
+import { useUIStore } from './stores/uiStore.js';
+import { Moon, Sun } from 'lucide-react';
 
 function Navigation() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { theme, setTheme } = useUIStore();
 
   const handleLogout = () => {
     logout();
@@ -42,37 +45,65 @@ function Navigation() {
   };
 
   return (
-    <nav style={{ marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <nav style={{ marginBottom: '20px', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div>
-        <Link to="/dashboard" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+        <Link to="/dashboard" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Dashboard
         </Link>
-        <Link to="/bots" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+        <Link to="/bots" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Bots
         </Link>
-        <Link to="/compare" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+        <Link to="/compare" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Compare
         </Link>
         {(user?.role === 'superadmin' || user?.role === 'auditor') && (
-          <Link to="/audit" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+          <Link to="/audit" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
             Audit Logs
           </Link>
         )}
         {user?.role === 'superadmin' && (
-          <Link to="/users" style={{ marginRight: '20px', color: '#e0e0e0', textDecoration: 'none' }}>
+          <Link to="/users" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
             Users
           </Link>
         )}
-        <Link to="/mock" style={{ color: '#e0e0e0', textDecoration: 'none' }}>
+        <Link to="/mock" style={{ color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Mock
         </Link>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <button
+          type="button"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          style={{
+            padding: '0.5rem 0.75rem',
+            backgroundColor: 'hsl(var(--secondary))',
+            color: 'hsl(var(--secondary-foreground))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            transition: 'background-color 0.2s',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'hsl(var(--muted))';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'hsl(var(--secondary))';
+          }}
+          title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+        >
+          {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          {theme === 'dark' ? 'Claro' : 'Oscuro'}
+        </button>
         {user && (
           <Link
             to="/profile"
             style={{
-              color: '#a0a0a0',
+              color: 'hsl(var(--muted-foreground))',
               fontSize: '0.875rem',
               textDecoration: 'none',
               cursor: 'pointer',
@@ -81,12 +112,12 @@ function Navigation() {
               transition: 'background-color 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#3a3a3a';
-              e.currentTarget.style.color = '#e0e0e0';
+              e.currentTarget.style.backgroundColor = 'hsl(var(--muted))';
+              e.currentTarget.style.color = 'hsl(var(--foreground))';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#a0a0a0';
+              e.currentTarget.style.color = 'hsl(var(--muted-foreground))';
             }}
           >
             {user.name || user.username} ({user.role})
@@ -96,8 +127,8 @@ function Navigation() {
           onClick={handleLogout}
           style={{
             padding: '0.5rem 1rem',
-            backgroundColor: '#dc2626',
-            color: '#ffffff',
+            backgroundColor: 'hsl(var(--destructive))',
+            color: 'hsl(var(--destructive-foreground))',
             border: 'none',
             borderRadius: '4px',
             cursor: 'pointer',

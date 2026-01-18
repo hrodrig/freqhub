@@ -35,7 +35,7 @@ export function PrivateRoute({ children, requiredRole }: PrivateRouteProps) {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        color: '#e0e0e0',
+        color: 'hsl(var(--foreground))',
       }}>
         Loading...
       </div>
