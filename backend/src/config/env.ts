@@ -91,8 +91,9 @@ const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
   const timestamp = new Date().toISOString();
-  console.error(`[${timestamp}] [ERROR] ❌ Invalid environment variables:`);
-  console.error(`[${timestamp}] [ERROR]`, parsed.error.format());
+  const levelTag = 'ERROR'.padEnd(5, ' ');
+  console.error(`[${timestamp}] [${levelTag}] ❌ Invalid environment variables:`);
+  console.error(`[${timestamp}] [${levelTag}]`, parsed.error.format());
   process.exit(1);
 }
 

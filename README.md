@@ -19,7 +19,7 @@
 # FreqHub
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.2.10-blue.svg)](https://github.com/hrodrig/freqhub/releases)
+[![Version](https://img.shields.io/badge/version-0.2.11-blue.svg)](https://github.com/hrodrig/freqhub/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
@@ -27,9 +27,9 @@
 
 ## 📦 Version
 
-**Current Version: 0.2.10**
+**Current Version: 0.2.11**
 
-### What's New in 0.2.10
+### What's New in 0.2.11
 
 This release focuses on **security hardening, operational safety, and observability**:
 
@@ -38,6 +38,7 @@ This release focuses on **security hardening, operational safety, and observabil
   - Swagger disabled by default in production
   - Health detail endpoints restricted to `superadmin`/`auditor`
   - Auth lockout support and bootstrap admin configuration
+  - Auditor read-only UI for bot management and chat commands
 
 - **🛡️ Nginx security defaults**:
   - Rate limiting for API routes
@@ -48,7 +49,7 @@ This release focuses on **security hardening, operational safety, and observabil
   - Timestamped logs in backend and frontend (WebSocket)
   - WebSocket auth token support for subscriptions
 
-For complete details, see the [CHANGELOG.md](CHANGELOG.md#0210---2026-01-24).
+For complete details, see the [CHANGELOG.md](CHANGELOG.md#0211---2026-01-24).
 
 ### Previous Features
 
@@ -127,7 +128,7 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 ### Planned Features
 
 - 🔄 **Advanced Security**: 2FA (TOTP), QR Code authentication, session management
-- 🔄 **User Management UI**: Frontend interface for user CRUD operations
+- ✅ **User Management UI**: Frontend interface for user CRUD operations
 - 🔄 **Trade Management**: Execute trades across multiple bots
 - 🔄 **Backtest Comparison**: Compare backtest results across strategies
 - 🔄 **Alert System**: Centralized alerts from all bot instances
@@ -510,11 +511,11 @@ When the system starts for the first time (or if no superadmin exists), it autom
 - Automatic token storage in localStorage
 - Protected routes that redirect to login if not authenticated
 - Navigation bar with user info and logout button
+- User management UI for CRUD operations (superadmin only)
 
 ### Planned Phases
 
 - **Phase 7**: Advanced Security (2FA with TOTP, QR Code authentication, session management)
-- **User Management UI**: Frontend interface for user CRUD operations
 - **Audit Log Viewer**: Frontend page to view and filter audit logs
 
 ## ⚙️ Configuration

@@ -20,7 +20,8 @@ type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 
 function formatMessage(level: LogLevel, message: string): string {
   const timestamp = new Date().toISOString();
-  return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+  const levelTag = level.toUpperCase().padEnd(5, ' ');
+  return `[${timestamp}] [${levelTag}] ${message}`;
 }
 
 export const appLogger = {

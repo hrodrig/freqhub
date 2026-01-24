@@ -31,7 +31,8 @@ const currentLogLevel = LOG_LEVELS[env.LOG_LEVEL] ?? LOG_LEVELS.info;
 
 function formatMessage(level: LogLevel, message: string): string {
   const timestamp = new Date().toISOString();
-  return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
+  const levelTag = level.toUpperCase().padEnd(5, ' ');
+  return `[${timestamp}] [${levelTag}] ${message}`;
 }
 
 function shouldLog(level: LogLevel): boolean {
