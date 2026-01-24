@@ -136,7 +136,7 @@ data:
 ```yaml
 # Example: Use a specific version or different registry
 image: your-registry.com/freqhub/freqhub-backend:dev-latest
-# Or: docker.io/freqhub/freqhub-backend:v0.2.10
+# Or: docker.io/freqhub/freqhub-backend:v0.2.11
 ```
 
 Then deploy the backend:
@@ -172,7 +172,7 @@ This ConfigMap contains the Nginx configuration that points to `http://freqhub-b
 ```yaml
 # Example: Use a specific version or different registry
 image: your-registry.com/freqhub/freqhub-frontend:dev-latest
-# Or: docker.io/freqhub/freqhub-frontend:v0.2.10
+# Or: docker.io/freqhub/freqhub-frontend:v0.2.11
 ```
 
 Then deploy:

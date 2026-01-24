@@ -112,6 +112,7 @@ interface Message {
 interface BotCommandChatProps {
   botId: string;
   botName: string;
+  readOnly?: boolean;
 }
 
 // Common Freqtrade commands
@@ -130,26 +131,30 @@ const COMMON_COMMANDS = [
   { command: '/help', description: 'Show available commands' },
 ];
 
-export function BotCommandChat({ botId, botName }: BotCommandChatProps) {
+export function BotCommandChat({ botId, botName, readOnly = false }: BotCommandChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isReadOnly = readOnly === true;
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (isReadOnly) return;
     // Ensure input keeps focus after scroll
     setTimeout(() => {
       inputRef.current?.focus();
     }, 100);
-  }, [messages]);
+  }, [messages, isReadOnly]);
 
   // Focus input on mount
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (!isReadOnly) {
+      inputRef.current?.focus();
+    }
+  }, [isReadOnly]);
 
   // Parse command and execute
   const executeCommand = async (command: string): Promise<unknown> => {
@@ -2251,6 +2256,16 @@ Statistics
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) {
+      const readOnlyMessage: Message = {
+        id: Date.now().toString(),
+        type: 'bot',
+        content: 'Read-only mode: auditors can view data but cannot execute commands.',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, readOnlyMessage]);
+      return;
+    }
     if (!input.trim() || isLoading) return;
 
     const command = input.trim();
@@ -2456,15 +2471,27 @@ Statistics
     } finally {
       setIsLoading(false);
       // Use requestAnimationFrame to ensure focus happens after React updates the DOM
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 0);
-      });
+      if (!isReadOnly) {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 0);
+        });
+      }
     }
   };
 
   const handleCommandClick = async (command: string) => {
+    if (isReadOnly) {
+      const readOnlyMessage: Message = {
+        id: Date.now().toString(),
+        type: 'bot',
+        content: 'Read-only mode: auditors can view data but cannot execute commands.',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, readOnlyMessage]);
+      return;
+    }
     // Commands that should execute immediately (no parameters needed or with optional parameters)
     const immediateCommands = [
       '/profit',
@@ -2582,7 +2609,9 @@ Statistics
     } else {
       // For other commands (with parameters), insert in input
       setInput(command);
-      inputRef.current?.focus();
+      if (!isReadOnly) {
+        inputRef.current?.focus();
+      }
     }
   };
 
@@ -2629,7 +2658,7 @@ Statistics
                   {message.type === 'bot' && message.command === '/help' ? (
                     <HelpMessageContent 
                       content={message.content} 
-                      onCommandClick={handleCommandClick}
+                      onCommandClick={isReadOnly ? () => undefined : handleCommandClick}
                     />
                   ) : (
                     message.content
@@ -2664,12 +2693,18 @@ Statistics
 
       {/* Quick Command Buttons */}
       <div className="px-4 py-2 border-t border-border bg-muted/30">
+        {isReadOnly && (
+          <div className="mb-2 text-xs text-muted-foreground">
+            Read-only mode: auditors can view data but cannot execute commands.
+          </div>
+        )}
         <div className="grid grid-cols-4 gap-2 mb-2">
           {COMMON_COMMANDS.slice(0, 8).map((cmd) => (
             <div key={cmd.command} className="relative group">
               <button
                 onClick={() => handleCommandClick(cmd.command)}
-                className="w-full px-2 py-1 text-xs bg-background hover:bg-gray-700 border border-border rounded transition-colors"
+                disabled={isReadOnly || isLoading}
+                className="w-full px-2 py-1 text-xs bg-background hover:bg-gray-700 border border-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {cmd.command}
               </button>
@@ -2685,7 +2720,8 @@ Statistics
             <div key={cmd.command} className="relative group">
               <button
                 onClick={() => handleCommandClick(cmd.command)}
-                className="w-full px-2 py-1 text-xs bg-background hover:bg-gray-700 border border-border rounded transition-colors"
+                disabled={isReadOnly || isLoading}
+                className="w-full px-2 py-1 text-xs bg-background hover:bg-gray-700 border border-border rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {cmd.command}
               </button>
@@ -2706,13 +2742,13 @@ Statistics
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Write a message... (e.g., /profit, /balance)"
+            placeholder={isReadOnly ? 'Read-only mode (auditor)' : 'Write a message... (e.g., /profit, /balance)'}
             className="flex-1 px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-            disabled={isLoading}
+            disabled={isLoading || isReadOnly}
           />
           <button
             type="submit"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || isReadOnly}
             onMouseDown={(e) => {
               // Prevent button from stealing focus
               e.preventDefault();

@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.10] - 2026-01-24
+## [0.2.11] - 2026-01-24
 
 ### Added
 - Production hardening for bot URLs with SSRF safeguards (blocks localhost/private targets in prod)
@@ -34,10 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nginx security hardening (rate limit, security headers, dotfile deny, static cache)
 - WebSocket auth token support on the frontend
 - Timestamped logs across backend + frontend
+- User Management UI for frontend CRUD operations (superadmin)
+- Auditor read-only UI for bot management and chat commands
 
 ### Changed
 - Health detail endpoints restricted to `superadmin`/`auditor` in production
 - Placeholder secrets rejected in production configs
+- Log level tags padded to fixed width for alignment
 
 ## [0.2.8] - 2026-01-17
 

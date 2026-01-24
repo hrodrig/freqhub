@@ -23,6 +23,7 @@ import { useBotStore } from '../stores/botStore.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
 import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
 import { appLogger } from '../utils/logger.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import type { CreateBotRequest, UpdateBotRequest } from '../types/bot.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 
@@ -44,6 +45,7 @@ interface BotStatus {
 }
 
 export function BotManagement() {
+  const { user } = useAuth();
   const { bots, fetchBots, removeBot, updateBot: updateBotInStore } = useBotStore();
   const [showForm, setShowForm] = useState(false);
   const [editingBot, setEditingBot] = useState<string | null>(null);
@@ -476,6 +478,10 @@ export function BotManagement() {
   };
 
   const handleEdit = (bot: { id: string; name: string; apiUrl: string; username: string; notes?: string; isEnabled: boolean }) => {
+    if (user?.role === 'auditor') {
+      setError('Read-only: auditors cannot edit bots.');
+      return;
+    }
     // Check if bot is running
     const status = botStatuses.find((s) => s.botId === bot.id);
     const botState = normalizeState(status?.status?.state);
@@ -542,7 +548,9 @@ export function BotManagement() {
           </div>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+            disabled={user?.role === 'auditor'}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={user?.role === 'auditor' ? 'Read-only: auditors cannot add bots.' : undefined}
           >
             {showForm ? (
               <>
@@ -558,7 +566,7 @@ export function BotManagement() {
           </button>
         </div>
 
-        {showForm && (
+        {showForm && user?.role !== 'auditor' && (
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>{editingBot ? 'Edit Bot' : 'Add New Bot'}</CardTitle>
@@ -981,9 +989,18 @@ export function BotManagement() {
                           </Link>
                           <button
                             onClick={() => handleEdit(bot)}
-                            disabled={normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING'}
+                            disabled={
+                              user?.role === 'auditor' ||
+                              normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING'
+                            }
                             className="p-2 text-primary hover:bg-primary/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING' ? 'Cannot edit a running bot. Stop it first.' : 'Edit Bot'}
+                            title={
+                              user?.role === 'auditor'
+                                ? 'Read-only: auditors cannot edit bots.'
+                                : normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING'
+                                  ? 'Cannot edit a running bot. Stop it first.'
+                                  : 'Edit Bot'
+                            }
                           >
                             <Edit className="h-4 w-4" />
                           </button>

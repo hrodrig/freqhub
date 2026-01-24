@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.
 import { BotCommandChat } from '../components/BotCommandChat.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
 import { appLogger } from '../utils/logger.js';
+import { useAuth } from '../contexts/AuthContext.js';
 import type { Bot } from '../types/bot.js';
 import type { Trade } from '../types/trade.js';
 import type { BalanceResponse } from '../types/balance.js';
@@ -43,6 +44,7 @@ interface ShowConfigResponse {
 }
 
 export function BotDetail() {
+  const { user } = useAuth();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [bot, setBot] = useState<Bot | null>(null);
@@ -453,7 +455,13 @@ export function BotDetail() {
           </CardHeader>
           <CardContent>
             <div className="h-[600px]">
-              {bot && <BotCommandChat botId={bot.id} botName={bot.name} />}
+              {bot && (
+                <BotCommandChat
+                  botId={bot.id}
+                  botName={bot.name}
+                  readOnly={user?.role === 'auditor'}
+                />
+              )}
             </div>
           </CardContent>
         </Card>
