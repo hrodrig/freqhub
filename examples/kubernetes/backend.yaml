@@ -40,10 +40,11 @@ data:
   PORT: "3001"
   NODE_ENV: "production"
   DATABASE_PATH: "/app/data/freqhub.db"
-  # CORS_ORIGIN: Allow all origins for port-forward access
-  # Update this to your actual domain in production
-  CORS_ORIGIN: "*"
+  # CORS_ORIGIN: Set to your public frontend origin (no "*")
+  # Example: https://freqhub.example.com
+  CORS_ORIGIN: "https://freqhub.example.com"
   LOG_LEVEL: "info"
+  SWAGGER_ENABLED: "false"
   VALKEY_ENABLED: "true"
   VALKEY_HOST: "freqhub-valkey"
   VALKEY_PORT: "6379"
@@ -60,6 +61,9 @@ type: Opaque
 stringData:
   # Change these values in production
   ENCRYPTION_KEY: "change-this-encryption-key-min-32-characters-long-in-production"
+  JWT_SECRET: "change-this-jwt-secret-min-32-characters-long-in-production"
+  # REQUIRED on first production startup if there is no superadmin yet (will not be logged)
+  DEFAULT_ADMIN_PASSWORD: "change-this-strong-bootstrap-password-min-12"
   # VALKEY_PASSWORD: ""  # Optional, if Valkey has a password
 ---
 apiVersion: v1

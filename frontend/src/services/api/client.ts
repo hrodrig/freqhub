@@ -18,6 +18,7 @@
 
 import axios, { type AxiosInstance } from 'axios';
 import { config } from '../../config/env.js';
+import { appLogger } from '../../utils/logger.js';
 
 /**
  * Create axios instance with base configuration
@@ -67,17 +68,19 @@ export function createApiClient(): AxiosInstance {
         const isFreqtradeError = error.response.data?.message?.includes('Freqtrade API error');
         if (error.response.status === 500 && isFreqtradeError) {
           // This is expected when Freqtrade bots are offline - log as warning instead
-          console.warn('Freqtrade API unavailable:', error.response.data?.message);
+          appLogger.warn(`Freqtrade API unavailable: ${error.response.data?.message ?? 'unknown'}`);
         } else if (error.response.status !== 401) {
           // Don't log 401 errors as they're handled above
-          console.error('API Error:', error.response.status, error.response.data);
+          appLogger.error(`API Error: ${error.response.status}`);
+          appLogger.error('API Error data:', error.response.data);
         }
       } else if (error.request) {
         // Request made but no response
-        console.error('Network Error:', error.request);
+        appLogger.error('Network Error');
+        appLogger.error('Network Error request:', error.request);
       } else {
         // Something else happened
-        console.error('Error:', error.message);
+        appLogger.error(`Error: ${error.message}`);
       }
       return Promise.reject(error);
     }

@@ -26,6 +26,7 @@ import { proxyRequest } from './proxyService.js';
 import { cacheStatsService } from './cacheStats.service.js';
 import { eventBusService } from './eventBus.service.js';
 import { appLogger } from '../utils/logger.js';
+import { assertBotApiUrlAllowed, validateBotWsUrl } from '../utils/urlSecurity.js';
 
 /**
  * Get all bots
@@ -74,6 +75,15 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
   const db = getDatabase();
   const id = randomUUID();
   const now = Date.now();
+
+  // SSRF defense-in-depth: validate bot URLs at the service layer as well.
+  assertBotApiUrlAllowed(data.apiUrl);
+  if (data.wsUrl) {
+    const wsValidation = validateBotWsUrl(data.wsUrl);
+    if (!wsValidation.ok) {
+      throw new Error(wsValidation.reason);
+    }
+  }
   
   // Encrypt password (reversible encryption for re-authentication)
   const encryptedPassword = encryptPassword(data.password);
@@ -153,10 +163,17 @@ export async function updateBot(id: string, data: UpdateBotRequest): Promise<Bot
     values.push(data.name);
   }
   if (data.apiUrl !== undefined) {
+    assertBotApiUrlAllowed(data.apiUrl);
     updates.push('api_url = ?');
     values.push(data.apiUrl);
   }
   if (data.wsUrl !== undefined) {
+    if (data.wsUrl) {
+      const wsValidation = validateBotWsUrl(data.wsUrl);
+      if (!wsValidation.ok) {
+        throw new Error(wsValidation.reason);
+      }
+    }
     updates.push('ws_url = ?');
     values.push(data.wsUrl);
   }

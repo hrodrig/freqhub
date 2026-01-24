@@ -18,6 +18,7 @@
 
 import Database from 'better-sqlite3';
 import { env } from '../config/env.js';
+import { appLogger } from '../utils/logger.js';
 import { createBotsTable } from './schema.js';
 import { mkdirSync, readdirSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -106,12 +107,12 @@ function applyMigrations(db: Database.Database): void {
       } catch (error) {
         // Migration might have already been applied or failed
         // Log warning but continue
-        console.warn(`Migration warning for ${migrationFile}:`, error);
+        appLogger.warn(`Migration warning for ${migrationFile}:`, error);
       }
     }
   } catch (error) {
     // Migrations directory might not exist or be inaccessible
-    console.warn('Migration directory error:', error);
+    appLogger.warn('Migration directory error:', error);
   }
 }
 

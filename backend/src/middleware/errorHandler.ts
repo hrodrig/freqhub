@@ -17,6 +17,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { appLogger } from '../utils/logger.js';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -32,7 +33,7 @@ export function errorHandler(
   const statusCode = err.statusCode || 500;
   const status = err.status || 'error';
 
-  console.error('Error:', {
+  appLogger.error('Error:', {
     statusCode,
     status,
     message: err.message,

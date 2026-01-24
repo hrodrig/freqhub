@@ -24,9 +24,17 @@ import { valkeyService } from '../services/valkey.service.js';
 import { websocketService } from '../services/websocket.service.js';
 import { pollingService } from '../services/polling.service.js';
 import { rateLimitService } from '../services/rateLimit.service.js';
+import { env } from '../config/env.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { requireRole } from '../middleware/authorize.middleware.js';
 
 export function createHealthRouter(): Router {
   const router = express.Router();
+
+  // In production, restrict detailed health endpoints.
+  const protectDetailed = env.NODE_ENV === 'production'
+    ? [authenticate, requireRole('superadmin', 'auditor')]
+    : [];
 
   /**
    * @swagger
@@ -103,7 +111,7 @@ export function createHealthRouter(): Router {
    *                     memory:
    *                       type: object
    */
-  router.get('/cache', async (_req: Request, res: Response) => {
+  router.get('/cache', ...protectDetailed, async (_req: Request, res: Response) => {
     try {
       const valkeyConnected = await valkeyService.ping();
       const valkeyMetrics = valkeyConnected ? await valkeyService.getMetrics() : null;
@@ -162,7 +170,7 @@ export function createHealthRouter(): Router {
    *                 timestamp:
    *                   type: string
    */
-  router.get('/websocket', (_req: Request, res: Response) => {
+  router.get('/websocket', ...protectDetailed, (_req: Request, res: Response) => {
     try {
       const stats = websocketService.getStats();
       res.json({
@@ -207,7 +215,7 @@ export function createHealthRouter(): Router {
    *                 timestamp:
    *                   type: string
    */
-  router.get('/polling', (_req: Request, res: Response) => {
+  router.get('/polling', ...protectDetailed, (_req: Request, res: Response) => {
     try {
       const stats = pollingService.getStats();
       res.json({
@@ -250,7 +258,7 @@ export function createHealthRouter(): Router {
    *                     stats:
    *                       type: array
    */
-  router.get('/ratelimit', async (_req: Request, res: Response) => {
+  router.get('/ratelimit', ...protectDetailed, async (_req: Request, res: Response) => {
     try {
       const stats = await rateLimitService.getAllStats();
       const { env } = await import('../config/env.js');

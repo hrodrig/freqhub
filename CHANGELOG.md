@@ -25,6 +25,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-01-24
+
+### Added
+- Production hardening for bot URLs with SSRF safeguards (blocks localhost/private targets in prod)
+- Swagger toggle (`SWAGGER_ENABLED`) and production defaults
+- Bootstrap admin and auth lockout configuration
+- Nginx security hardening (rate limit, security headers, dotfile deny, static cache)
+- WebSocket auth token support on the frontend
+- Timestamped logs across backend + frontend
+
+### Changed
+- Health detail endpoints restricted to `superadmin`/`auditor` in production
+- Placeholder secrets rejected in production configs
+
 ## [0.2.8] - 2026-01-17
 
 ### Added

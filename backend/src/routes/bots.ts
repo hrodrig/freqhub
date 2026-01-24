@@ -31,11 +31,20 @@ import { authenticate } from '../middleware/auth.middleware.js';
 import { requireBotOwnershipOrSuperadmin, requireBotViewAccess } from '../middleware/authorize.middleware.js';
 import { getBotsOwnedByUser } from '../services/botOwnershipService.js';
 import { assignBotOwnership } from '../services/botOwnershipService.js';
+import { validateBotApiUrl, validateBotWsUrl } from '../utils/urlSecurity.js';
 
 const createBotSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  apiUrl: z.string().url('Invalid API URL'),
-  wsUrl: z.string().url('Invalid WebSocket URL').optional(),
+  apiUrl: z.string().url('Invalid API URL').refine((val) => validateBotApiUrl(val).ok, {
+    message: 'API URL is not allowed (security policy)',
+  }),
+  wsUrl: z
+    .string()
+    .url('Invalid WebSocket URL')
+    .optional()
+    .refine((val) => (val ? validateBotWsUrl(val).ok : true), {
+      message: 'WebSocket URL is not allowed (security policy)',
+    }),
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
   notes: z.string().optional(),
@@ -43,8 +52,20 @@ const createBotSchema = z.object({
 
 const updateBotSchema = z.object({
   name: z.string().min(1).optional(),
-  apiUrl: z.string().url().optional(),
-  wsUrl: z.string().url().optional(),
+  apiUrl: z
+    .string()
+    .url()
+    .optional()
+    .refine((val) => (val ? validateBotApiUrl(val).ok : true), {
+      message: 'API URL is not allowed (security policy)',
+    }),
+  wsUrl: z
+    .string()
+    .url()
+    .optional()
+    .refine((val) => (val ? validateBotWsUrl(val).ok : true), {
+      message: 'WebSocket URL is not allowed (security policy)',
+    }),
   username: z.string().min(1).optional(),
   password: z.string().min(1).optional(),
   isEnabled: z.boolean().optional(),

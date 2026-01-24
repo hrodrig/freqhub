@@ -79,26 +79,37 @@ app.use(logger);
 const basePath = env.BASE_PATH || '';
 
 // Swagger UI - API Documentation
-app.use(`${basePath}/api-docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'FreqHub API Documentation',
-  swaggerOptions: {
-    // Use the first server (development) by default
-    defaultModelsExpandDepth: 1,
-    defaultModelExpandDepth: 1,
-    displayRequestDuration: true,
-    docExpansion: 'list',
-    filter: true,
-    showExtensions: true,
-    showCommonExtensions: true,
-  },
-}));
+// Disabled by default in production. Enable only if you protect access separately.
+if (env.NODE_ENV !== 'production' && env.SWAGGER_ENABLED) {
+  app.use(
+    `${basePath}/api-docs`,
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: 'FreqHub API Documentation',
+      swaggerOptions: {
+        // Use the first server (development) by default
+        defaultModelsExpandDepth: 1,
+        defaultModelExpandDepth: 1,
+        displayRequestDuration: true,
+        docExpansion: 'list',
+        filter: true,
+        showExtensions: true,
+        showCommonExtensions: true,
+      },
+    })
+  );
 
-// Swagger JSON endpoint
-app.get(`${basePath}/api-docs.json`, (_req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-});
+  // Swagger JSON endpoint
+  app.get(`${basePath}/api-docs.json`, (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+  });
+} else {
+  app.get([`${basePath}/api-docs`, `${basePath}/api-docs.json`], (_req, res) => {
+    res.status(404).json({ error: 'Not found' });
+  });
+}
 
 // Routes with configurable base path
 app.use(`${basePath}/api/healthz`, createHealthRouter());
@@ -124,19 +135,19 @@ const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces for Dock
 // Initialize system (create superadmin if needed) before starting server
 initializeSystem().then(() => {
   httpServer.listen(PORT, HOST, () => {
-    console.log(`🚀 FreqHub Backend running on http://${HOST}:${PORT}`);
-    console.log(`📊 Environment: ${env.NODE_ENV}`);
-    console.log(`💾 Database: ${env.DATABASE_PATH}`);
+    appLogger.info(`🚀 FreqHub Backend running on http://${HOST}:${PORT}`);
+    appLogger.info(`📊 Environment: ${env.NODE_ENV}`);
+    appLogger.info(`💾 Database: ${env.DATABASE_PATH}`);
     if (basePath) {
-      console.log(`🔗 Base Path: ${basePath}`);
-      console.log(`   Health: http://${HOST}:${PORT}${basePath}/api/healthz`);
-      console.log(`   Bots: http://${HOST}:${PORT}${basePath}/api/bots`);
-      console.log(`   Swagger: http://${HOST}:${PORT}${basePath}/api-docs`);
+      appLogger.info(`🔗 Base Path: ${basePath}`);
+      appLogger.info(`   Health: http://${HOST}:${PORT}${basePath}/api/healthz`);
+      appLogger.info(`   Bots: http://${HOST}:${PORT}${basePath}/api/bots`);
+      appLogger.info(`   Swagger: http://${HOST}:${PORT}${basePath}/api-docs`);
     } else {
-      console.log(`🔗 Base Path: / (root)`);
-      console.log(`   Health: http://${HOST}:${PORT}/api/healthz`);
-      console.log(`   Bots: http://${HOST}:${PORT}/api/bots`);
-      console.log(`   Swagger: http://${HOST}:${PORT}/api-docs`);
+      appLogger.info(`🔗 Base Path: / (root)`);
+      appLogger.info(`   Health: http://${HOST}:${PORT}/api/healthz`);
+      appLogger.info(`   Bots: http://${HOST}:${PORT}/api/bots`);
+      appLogger.info(`   Swagger: http://${HOST}:${PORT}/api-docs`);
     }
 
     // Start polling service

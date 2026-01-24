@@ -20,6 +20,7 @@ import { useState, useEffect } from 'react';
 import { Plus, X, Edit, Trash2, Eye, EyeOff, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { apiClient } from '../services/api/client.js';
 import { useAuth } from '../contexts/AuthContext.js';
+import { appLogger } from '../utils/logger.js';
 
 interface User {
   id: string;
@@ -75,7 +76,7 @@ export function UserManagement() {
       const response = await apiClient.get('/users');
       setUsers(response.data.data || []);
     } catch (err: unknown) {
-      console.error('Failed to fetch users:', err);
+      appLogger.error('Failed to fetch users:', err);
       setError('Failed to load users');
     } finally {
       setIsLoading(false);
@@ -90,7 +91,7 @@ export function UserManagement() {
         [userId]: response.data.data || [],
       }));
     } catch (err) {
-      console.error('Failed to fetch user bots:', err);
+      appLogger.error('Failed to fetch user bots:', err);
     }
   };
 

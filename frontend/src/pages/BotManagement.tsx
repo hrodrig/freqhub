@@ -22,6 +22,7 @@ import { Link } from 'react-router-dom';
 import { useBotStore } from '../stores/botStore.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
 import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
+import { appLogger } from '../utils/logger.js';
 import type { CreateBotRequest, UpdateBotRequest } from '../types/bot.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 
@@ -423,7 +424,7 @@ export function BotManagement() {
         loadBotStatuses(botId);
       }, 1500);
     } catch (err) {
-      console.error(`Failed to ${action} bot ${botId}:`, err);
+      appLogger.error(`Failed to ${action} bot ${botId}:`, err);
       const errorMessage = err instanceof Error ? err.message : `Failed to ${action} bot`;
       alert(`❌ ${errorMessage}`);
     } finally {

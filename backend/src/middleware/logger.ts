@@ -17,6 +17,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { appLogger } from '../utils/logger.js';
 
 export function logger(req: Request, res: Response, next: NextFunction): void {
   const start = Date.now();
@@ -24,7 +25,8 @@ export function logger(req: Request, res: Response, next: NextFunction): void {
   res.on('finish', () => {
     const duration = Date.now() - start;
     const logLevel = res.statusCode >= 400 ? 'error' : 'info';
-    console[logLevel](`${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`);
+    const message = `${req.method} ${req.originalUrl} ${res.statusCode} - ${duration}ms`;
+    appLogger[logLevel](message);
   });
 
   next();

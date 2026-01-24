@@ -20,6 +20,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Activity, DollarSign, Bot, CheckCircle2, XCircle, BarChart3, ArrowUpDown, ArrowUp, ArrowDown, Calendar, ChevronDown, Play, Square, Trash2, Settings, Plus, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { appLogger } from '../utils/logger.js';
 
 // Mock data for demonstration
 const mockPerformanceData = [
@@ -340,7 +341,7 @@ export function DashboardMock() {
   // Action handlers
   const handleBulkAction = (action: 'start' | 'stop') => {
     const selectedNames = Array.from(selectedBots);
-    console.log(`Action: ${action}`, selectedNames);
+    appLogger.info(`Action: ${action}`, selectedNames);
     // Here you would implement the actual action logic
     alert(`${action} action for bots: ${selectedNames.join(', ')}`);
     setSelectedBots(new Set());
@@ -804,7 +805,7 @@ export function DashboardMock() {
                                   title="Stop Bot"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Stop bot:', bot.name);
+                                    appLogger.info(`Stop bot: ${bot.name}`);
                                   }}
                                 >
                                   <Square className="h-4 w-4 text-yellow-500" />
@@ -815,7 +816,7 @@ export function DashboardMock() {
                                   title="Start Bot"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Start bot:', bot.name);
+                                    appLogger.info(`Start bot: ${bot.name}`);
                                   }}
                                 >
                                   <Play className="h-4 w-4 text-green-500" />
@@ -826,7 +827,7 @@ export function DashboardMock() {
                                 title="Delete Bot"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('Delete bot:', bot.name);
+                                  appLogger.info(`Delete bot: ${bot.name}`);
                                 }}
                               >
                                 <Trash2 className="h-4 w-4 text-red-500" />
@@ -836,7 +837,7 @@ export function DashboardMock() {
                                 title="Configure Bot"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('Configure bot:', bot.name);
+                                  appLogger.info(`Configure bot: ${bot.name}`);
                                 }}
                               >
                                 <Settings className="h-4 w-4 text-primary" />

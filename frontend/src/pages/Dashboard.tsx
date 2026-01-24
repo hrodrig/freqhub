@@ -20,6 +20,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useBotStore } from '../stores/botStore.js';
 import { proxyApi } from '../services/api/endpoints.js';
 import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
+import { appLogger } from '../utils/logger.js';
 import { Link } from 'react-router-dom';
 import { Bot, Activity, CheckCircle2, XCircle, Loader2, Calendar, Play, Square, Pause, RefreshCw, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
@@ -120,7 +121,7 @@ export function Dashboard() {
 
       return sorted;
     } catch (err) {
-      console.error(`Failed to load daily data for bot ${botId}:`, err);
+      appLogger.error(`Failed to load daily data for bot ${botId}:`, err);
       return [];
     }
   }, []);
@@ -302,7 +303,7 @@ export function Dashboard() {
         loadBotStatuses(botId);
       }, 1500);
     } catch (err) {
-      console.error(`Failed to ${action} bot ${botId}:`, err);
+      appLogger.error(`Failed to ${action} bot ${botId}:`, err);
       const errorMessage = err instanceof Error ? err.message : `Failed to ${action} bot`;
       alert(`❌ ${errorMessage}`);
     } finally {
