@@ -103,7 +103,7 @@ kubectl apply -f backend-pvc.yaml
 
 **IMPORTANT**: Edit `backend.yaml` and:
 
-1. Update the Secret with real values:
+1. Update the Secret with real values (**do not keep placeholders/defaults in production**):
 
 ```yaml
 apiVersion: v1
@@ -114,14 +114,29 @@ metadata:
 type: Opaque
 stringData:
   ENCRYPTION_KEY: "your-encryption-key-minimum-32-characters"
+  JWT_SECRET: "your-jwt-secret-minimum-32-characters"
+  # VALKEY_PASSWORD: ""  # Optional, if Valkey has a password
 ```
 
-2. (Optional) Update the image registry and tag if needed:
+**Notes:**
+- `ENCRYPTION_KEY` and `JWT_SECRET` should be **random** and **unique per environment**.
+- Avoid committing real secrets to git. Prefer Sealed Secrets / External Secrets / your secret manager.
+- The backend requires `JWT_SECRET` (no insecure code defaults).
+
+2. Update `CORS_ORIGIN` in the ConfigMap to your public frontend origin (**no `*`**):
+
+```yaml
+data:
+  # Example: https://freqhub.example.com
+  CORS_ORIGIN: "https://freqhub.example.com"
+```
+
+3. (Optional) Update the image registry and tag if needed:
 
 ```yaml
 # Example: Use a specific version or different registry
 image: your-registry.com/freqhub/freqhub-backend:dev-latest
-# Or: docker.io/freqhub/freqhub-backend:v0.2.8
+# Or: docker.io/freqhub/freqhub-backend:v0.2.10
 ```
 
 Then deploy the backend:
@@ -129,6 +144,18 @@ Then deploy the backend:
 ```bash
 kubectl apply -f backend.yaml
 ```
+
+### 3.1 (Recommended) Restrict backend egress (SSRF hardening)
+
+Apply the example NetworkPolicy to reduce SSRF blast radius:
+
+```bash
+kubectl apply -f backend-egress-networkpolicy.yaml
+```
+
+**Important**: You must adapt `backend-egress-networkpolicy.yaml` to your cluster:
+- Ensure it allows egress to your **Freqtrade API** pods/services (labels + port).
+- Keep DNS egress allowed (otherwise service name resolution breaks).
 
 ### 4. Deploy Frontend
 
@@ -145,7 +172,7 @@ This ConfigMap contains the Nginx configuration that points to `http://freqhub-b
 ```yaml
 # Example: Use a specific version or different registry
 image: your-registry.com/freqhub/freqhub-frontend:dev-latest
-# Or: docker.io/freqhub/freqhub-frontend:v0.2.8
+# Or: docker.io/freqhub/freqhub-frontend:v0.2.10
 ```
 
 Then deploy:

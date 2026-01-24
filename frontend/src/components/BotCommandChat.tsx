@@ -19,6 +19,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot, User } from 'lucide-react';
 import { proxyApi } from '../services/api/endpoints';
+import { appLogger } from '../utils/logger.js';
 
 // Component to render help message with clickable commands
 function HelpMessageContent({ 
@@ -906,7 +907,6 @@ Statistics
     }
 
     // Log the full balance structure for debugging (can be removed in production if needed)
-    // console.log('Balance response structure:', JSON.stringify(balance, null, 2));
 
     const bal = balance as {
       starting_capital?: number;
@@ -990,7 +990,6 @@ Statistics
     }
 
     // Log profit structure for debugging
-    // console.log('Profit response structure:', JSON.stringify(profit, null, 2));
 
     try {
     // Extract timescale from command if present (e.g., "/profit_short 5" -> 5)
@@ -1219,7 +1218,7 @@ Statistics
 
       return result || 'No profit data available';
     } catch (error) {
-      console.error('Error formatting profit:', error);
+      appLogger.error('Error formatting profit:', error);
       return `Error formatting profit data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(profit, null, 2)}`;
     }
   };
@@ -1319,7 +1318,7 @@ Statistics
 
       return `${count} recent trades:\n${table}`;
     } catch (error) {
-      console.error('Error formatting trades:', error);
+      appLogger.error('Error formatting trades:', error);
       return `Error formatting trades data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(tradesData, null, 2)}`;
     }
   };
@@ -1360,7 +1359,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting mix_tags:', error);
+      appLogger.error('Error formatting mix_tags:', error);
       return `Error formatting mix_tags data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(mixTags, null, 2)}`;
     }
   };
@@ -1401,7 +1400,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting exits:', error);
+      appLogger.error('Error formatting exits:', error);
       return `Error formatting exits data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(exits, null, 2)}`;
     }
   };
@@ -1460,7 +1459,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting health:', error);
+      appLogger.error('Error formatting health:', error);
       return `Error formatting health data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(health, null, 2)}`;
     }
   };
@@ -1493,7 +1492,7 @@ Statistics
 
       return formattedLogs.join('\n');
     } catch (error) {
-      console.error('Error formatting logs:', error);
+      appLogger.error('Error formatting logs:', error);
       return `Error formatting logs data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(logsData, null, 2)}`;
     }
   };
@@ -1524,7 +1523,7 @@ Statistics
 
       return message;
     } catch (error) {
-      console.error('Error formatting whitelist:', error);
+      appLogger.error('Error formatting whitelist:', error);
       return `Error formatting whitelist data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(whitelistData, null, 2)}`;
     }
   };
@@ -1569,7 +1568,7 @@ Statistics
 
       return message;
     } catch (error) {
-      console.error('Error formatting blacklist:', error);
+      appLogger.error('Error formatting blacklist:', error);
       return `Error formatting blacklist data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(blacklistData, null, 2)}`;
     }
   };
@@ -1629,7 +1628,7 @@ Statistics
 
       return table;
     } catch (error) {
-      console.error('Error formatting locks:', error);
+      appLogger.error('Error formatting locks:', error);
       return `Error formatting locks data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(locksData, null, 2)}`;
     }
   };
@@ -1749,7 +1748,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting show_config:', error);
+      appLogger.error('Error formatting show_config:', error);
       return `Error formatting config data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(config, null, 2)}`;
     }
   };
@@ -1793,7 +1792,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting entries:', error);
+      appLogger.error('Error formatting entries:', error);
       return `Error formatting entries data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(entries, null, 2)}`;
     }
   };
@@ -1835,7 +1834,7 @@ Statistics
 
       return `${header}${separator}${values}`;
     } catch (error) {
-      console.error('Error formatting count:', error);
+      appLogger.error('Error formatting count:', error);
       return `Error formatting count data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(count, null, 2)}`;
     }
   };
@@ -1899,7 +1898,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting daily:', error);
+      appLogger.error('Error formatting daily:', error);
       return `Error formatting daily data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(daily, null, 2)}`;
     }
   };
@@ -1957,7 +1956,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting weekly:', error);
+      appLogger.error('Error formatting weekly:', error);
       return `Error formatting weekly data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(weekly, null, 2)}`;
     }
   };
@@ -2021,7 +2020,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting monthly:', error);
+      appLogger.error('Error formatting monthly:', error);
       return `Error formatting monthly data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(monthly, null, 2)}`;
     }
   };
@@ -2114,7 +2113,7 @@ Statistics
 
       return result || 'No stats data available';
     } catch (error) {
-      console.error('Error formatting stats:', error);
+      appLogger.error('Error formatting stats:', error);
       return `Error formatting stats data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(stats, null, 2)}`;
     }
   };
@@ -2134,7 +2133,7 @@ Statistics
       const versionStr = versionData.version || 'Unknown';
       return `Version: ${versionStr}`;
     } catch (error) {
-      console.error('Error formatting version:', error);
+      appLogger.error('Error formatting version:', error);
       return `Error formatting version data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(version, null, 2)}`;
     }
   };
@@ -2171,7 +2170,7 @@ Statistics
 
       return result;
     } catch (error) {
-      console.error('Error formatting performance:', error);
+      appLogger.error('Error formatting performance:', error);
       return `Error formatting performance data: ${error instanceof Error ? error.message : 'Unknown error'}\n\nRaw data:\n${JSON.stringify(performance, null, 2)}`;
     }
   };
@@ -2300,7 +2299,7 @@ Statistics
               }
             }
           } catch (err) {
-            console.error('Failed to get status during reload:', err);
+            appLogger.error('Failed to get status during reload:', err);
             // Fallback to static message if query fails
             const reloadStatusMessage: Message = {
               id: `${baseTime + 2}`,
@@ -2341,7 +2340,7 @@ Statistics
               }
             }
           } catch (err) {
-            console.error('Failed to get config after reload:', err);
+            appLogger.error('Failed to get config after reload:', err);
           }
         }, 2000); // Wait 2 seconds for reload to complete
       } else {
@@ -2387,7 +2386,7 @@ Statistics
               }
             } catch (err) {
               // Silently fail - we already showed the initial response
-              console.error('Failed to get final state:', err);
+              appLogger.error('Failed to get final state:', err);
             }
           }, 1500); // Wait 1.5 seconds before checking final state
         }
@@ -2559,7 +2558,7 @@ Statistics
               }
             } catch (err) {
               // Silently fail - we already showed the initial response
-              console.error('Failed to get final state:', err);
+              appLogger.error('Failed to get final state:', err);
             }
           }, 1500); // Wait 1.5 seconds before checking final state
         }

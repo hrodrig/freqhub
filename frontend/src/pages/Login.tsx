@@ -50,18 +50,19 @@ export function Login() {
       justifyContent: 'center',
       alignItems: 'center',
       minHeight: '100vh',
-      backgroundColor: '#0a0a0a',
+      backgroundColor: 'hsl(var(--background))',
     }}>
       <div style={{
         width: '100%',
         maxWidth: '400px',
         padding: '2rem',
-        backgroundColor: '#1a1a1a',
+        backgroundColor: 'hsl(var(--card))',
+        border: '1px solid hsl(var(--border))',
         borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.15)',
       }}>
         <h1 style={{
-          color: '#e0e0e0',
+          color: 'hsl(var(--foreground))',
           textAlign: 'center',
           marginBottom: '2rem',
           fontSize: '1.5rem',
@@ -82,10 +83,10 @@ export function Login() {
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                backgroundColor: '#2a2a2a',
-                border: '1px solid #3a3a3a',
+                backgroundColor: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: '4px',
-                color: '#e0e0e0',
+                color: 'hsl(var(--foreground))',
                 fontSize: '1rem',
                 boxSizing: 'border-box',
               }}
@@ -103,10 +104,10 @@ export function Login() {
                 width: '100%',
                 padding: '0.75rem',
                 paddingRight: '2.5rem',
-                backgroundColor: '#2a2a2a',
-                border: '1px solid #3a3a3a',
+                backgroundColor: 'hsl(var(--background))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: '4px',
-                color: '#e0e0e0',
+                color: 'hsl(var(--foreground))',
                 fontSize: '1rem',
                 boxSizing: 'border-box',
               }}
@@ -126,13 +127,13 @@ export function Login() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#a0a0a0',
+                color: 'hsl(var(--muted-foreground))',
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.color = '#e0e0e0';
+                e.currentTarget.style.color = 'hsl(var(--foreground))';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.color = '#a0a0a0';
+                e.currentTarget.style.color = 'hsl(var(--muted-foreground))';
               }}
               title={showPassword ? 'Hide password' : 'Show password'}
             >
@@ -148,10 +149,10 @@ export function Login() {
             <div style={{
               padding: '0.75rem',
               marginBottom: '1rem',
-              backgroundColor: '#4a1a1a',
-              border: '1px solid #6a2a2a',
+              backgroundColor: 'hsl(var(--destructive))',
+              border: '1px solid hsl(var(--border))',
               borderRadius: '4px',
-              color: '#ff6b6b',
+              color: 'hsl(var(--destructive-foreground))',
               fontSize: '0.875rem',
             }}>
               {error}
@@ -164,8 +165,8 @@ export function Login() {
             style={{
               width: '100%',
               padding: '0.75rem',
-              backgroundColor: loading ? '#3a3a3a' : '#2563eb',
-              color: '#ffffff',
+              backgroundColor: loading ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
+              color: 'hsl(var(--primary-foreground))',
               border: 'none',
               borderRadius: '4px',
               fontSize: '1rem',
@@ -175,12 +176,12 @@ export function Login() {
             }}
             onMouseOver={(e) => {
               if (!loading) {
-                e.currentTarget.style.backgroundColor = '#1d4ed8';
+                e.currentTarget.style.backgroundColor = 'hsl(var(--ring))';
               }
             }}
             onMouseOut={(e) => {
               if (!loading) {
-                e.currentTarget.style.backgroundColor = '#2563eb';
+                e.currentTarget.style.backgroundColor = 'hsl(var(--primary))';
               }
             }}
           >

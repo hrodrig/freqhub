@@ -21,6 +21,8 @@ import { getBotWithCredentials, updateBotToken, invalidateBotCache } from './bot
 import { decryptPassword } from './encryptionService.js';
 import { rateLimitService } from './rateLimit.service.js';
 import { env } from '../config/env.js';
+import { appLogger } from '../utils/logger.js';
+import { assertBotApiUrlAllowed } from '../utils/urlSecurity.js';
 
 interface FreqtradeLoginResponse {
   access_token: string;
@@ -99,7 +101,7 @@ export async function testBotConnection(
 
     return !!loginResponse.data.access_token;
   } catch (error) {
-    console.error('Connection test failed:', error);
+    appLogger.error('Connection test failed:', error);
     return false;
   }
 }
@@ -122,6 +124,10 @@ export async function proxyRequest(
   if (!bot.is_enabled) {
     throw new Error('Bot is disabled');
   }
+
+  // SSRF defense-in-depth: block unsafe targets (especially in production),
+  // even if a legacy DB entry exists.
+  assertBotApiUrlAllowed(bot.api_url);
 
   // Check rate limit only if not skipped
   // Note: Routes apply rate limit before calling proxyRequest, so skipRateLimit should be true
@@ -151,9 +157,6 @@ export async function proxyRequest(
     bot.token_expires_at &&
     bot.token_expires_at > now;
 
-  // Import logger for debugging
-  const { appLogger } = await import('../utils/logger.js');
-  
   // Remove leading slash from path when using baseURL (axios requirement)
   // axios will add it automatically when concatenating with baseURL
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;

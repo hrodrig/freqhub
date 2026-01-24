@@ -16,48 +16,24 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { env } from '../config/env.js';
-
 type LogLevel = 'error' | 'warn' | 'info' | 'debug';
-
-const LOG_LEVELS: Record<LogLevel, number> = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  debug: 3,
-};
-
-const currentLogLevel = LOG_LEVELS[env.LOG_LEVEL] ?? LOG_LEVELS.info;
 
 function formatMessage(level: LogLevel, message: string): string {
   const timestamp = new Date().toISOString();
   return `[${timestamp}] [${level.toUpperCase()}] ${message}`;
 }
 
-function shouldLog(level: LogLevel): boolean {
-  return LOG_LEVELS[level] <= currentLogLevel;
-}
-
 export const appLogger = {
   error: (message: string, ...args: unknown[]): void => {
-    if (shouldLog('error')) {
-      console.error(formatMessage('error', message), ...args);
-    }
+    console.error(formatMessage('error', message), ...args);
   },
   warn: (message: string, ...args: unknown[]): void => {
-    if (shouldLog('warn')) {
-      console.warn(formatMessage('warn', message), ...args);
-    }
+    console.warn(formatMessage('warn', message), ...args);
   },
   info: (message: string, ...args: unknown[]): void => {
-    if (shouldLog('info')) {
-      console.info(formatMessage('info', message), ...args);
-    }
+    console.info(formatMessage('info', message), ...args);
   },
   debug: (message: string, ...args: unknown[]): void => {
-    if (shouldLog('debug')) {
-      console.debug(formatMessage('debug', message), ...args);
-    }
+    console.debug(formatMessage('debug', message), ...args);
   },
 };
-

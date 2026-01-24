@@ -1,0 +1,66 @@
+# FreqHub - Multi-bot dashboard for Freqtrade
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+# ⚠️ IMPORTANT
+# This is an example NetworkPolicy to reduce SSRF blast radius by restricting backend egress.
+# You MUST adapt selectors/ports to match your cluster and your Freqtrade deployments.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: freqhub-backend-egress
+  namespace: main
+  labels:
+    app: freqhub
+    component: backend
+spec:
+  podSelector:
+    matchLabels:
+      app: freqhub
+      component: backend
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS (needed to resolve service names)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # Allow Valkey (FreqHub cache/event bus)
+    - to:
+        - podSelector:
+            matchLabels:
+              app: freqhub
+              component: valkey
+      ports:
+        - protocol: TCP
+          port: 6379
+
+    # Allow Freqtrade bot APIs (ADAPT labels/ports to your setup)
+    # Example: label your Freqtrade pods/services with app=freqtrade and expose API on 8080.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: freqtrade
+      ports:
+        - protocol: TCP
+          port: 8080

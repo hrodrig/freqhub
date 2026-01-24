@@ -19,7 +19,7 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { env } from '../config/env.js';
-import { getUserByUsername, getUserByIdDB, updateLastLogin, incrementFailedLoginAttempts, resetFailedLoginAttempts, isUserAccountLocked, updateUser } from './userService.js';
+import { getUserByUsername, getUserByIdDB, updateLastLogin, incrementFailedLoginAttempts, resetFailedLoginAttempts, isUserAccountLocked, lockUserAccount, updateUser } from './userService.js';
 import type { UserDB } from '../db/schema.js';
 import { createAuditLog } from './auditService.js';
 import { appLogger } from '../utils/logger.js';
@@ -103,6 +103,28 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
   if (!passwordValid) {
     // Increment failed login attempts
     incrementFailedLoginAttempts(user.id);
+
+    // Lockout policy (defense-in-depth)
+    const nextAttempts = (user.failed_login_attempts || 0) + 1;
+    if (nextAttempts >= env.AUTH_LOCKOUT_THRESHOLD) {
+      const lockUntil = Date.now() + env.AUTH_LOCKOUT_DURATION_SECONDS * 1000;
+      lockUserAccount(user.id, lockUntil);
+      appLogger.warn(`User account locked due to failed logins: ${username} until ${new Date(lockUntil).toISOString()}`);
+      createAuditLog({
+        userId: user.id,
+        action: 'account_locked',
+        actionCategory: 'auth',
+        resourceType: 'user',
+        resourceId: user.id,
+        details: {
+          reason: 'Too many failed login attempts',
+          username,
+          lockUntil,
+        },
+        ipAddress,
+        userAgent,
+      });
+    }
     
     // Log failed attempt
     createAuditLog({
@@ -114,6 +136,7 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
       details: {
         reason: 'Invalid password',
         username,
+        failedLoginAttempts: nextAttempts,
       },
       ipAddress,
       userAgent,

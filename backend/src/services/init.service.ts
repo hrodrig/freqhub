@@ -22,6 +22,7 @@ import { createUser } from './userService.js';
 import { createAuditLog } from './auditService.js';
 import { appLogger } from '../utils/logger.js';
 import bcrypt from 'bcrypt';
+import { env } from '../config/env.js';
 
 /**
  * Initialize system on startup
@@ -46,12 +47,21 @@ export async function initializeSystem(): Promise<void> {
     `).get() as { count: number };
     
     if (superadmins.count === 0) {
-      // Generate secure random password
-      const randomPassword = generateSecurePassword();
-      const passwordHash = await bcrypt.hash(randomPassword, 10);
-      
-      const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || 'freqhub';
-      const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@freqhub.local';
+      const adminUsername = env.DEFAULT_ADMIN_USERNAME;
+      const adminEmail = env.DEFAULT_ADMIN_EMAIL;
+
+      // In production, require an operator-provided bootstrap password.
+      // Never print it to logs (K8s logs are centralized and long-lived).
+      if (env.NODE_ENV === 'production' && !env.DEFAULT_ADMIN_PASSWORD) {
+        appLogger.error('❌ No superadmin exists yet and DEFAULT_ADMIN_PASSWORD is not set.');
+        appLogger.error('Set DEFAULT_ADMIN_PASSWORD via environment/Kubernetes Secret and restart.');
+        // Fail fast: otherwise the generated password would be unknown and login would be impossible.
+        process.exit(1);
+      }
+
+      // Generate secure random password for non-production
+      const bootstrapPassword = env.DEFAULT_ADMIN_PASSWORD || generateSecurePassword();
+      const passwordHash = await bcrypt.hash(bootstrapPassword, 10);
       
       // Create superadmin user (password_hash is set directly)
       const user = createUser(
@@ -66,16 +76,22 @@ export async function initializeSystem(): Promise<void> {
         null // created_by = null (system-created)
       );
       
-      // Display credentials in logs with prominent formatting
+      // Display credentials in logs only in non-production.
+      // In production: log username/email only, never the password.
       appLogger.warn('\n' + '='.repeat(80));
       appLogger.warn('⚠️  SUPERADMIN CREATED AUTOMATICALLY');
       appLogger.warn('='.repeat(80));
       appLogger.warn(`👤 Username: ${adminUsername}`);
-      appLogger.warn(`🔑 Password: ${randomPassword}`);
+      if (env.NODE_ENV !== 'production') {
+        appLogger.warn(`🔑 Password: ${bootstrapPassword}`);
+        appLogger.warn('⚠️  These credentials are only shown ONCE');
+      } else {
+        appLogger.warn('🔑 Password: (not logged in production)');
+        appLogger.warn('⚠️  Provide DEFAULT_ADMIN_PASSWORD via Secret/ENV to bootstrap.');
+      }
       appLogger.warn(`📧 Email: ${adminEmail}`);
       appLogger.warn('='.repeat(80));
       appLogger.warn('⚠️  IMPORTANT: Change the password after the first login');
-      appLogger.warn('⚠️  These credentials are only shown ONCE');
       appLogger.warn('='.repeat(80) + '\n');
       
       // Log audit event (use the created user's ID as the actor)

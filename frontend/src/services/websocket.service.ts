@@ -18,6 +18,7 @@
 
 import { io, type Socket } from 'socket.io-client';
 import { config } from '../config/env.js';
+import { appLogger } from '../utils/logger.js';
 
 export interface FreqHubEvent {
   type: string;
@@ -46,6 +47,8 @@ class WebSocketService {
       return;
     }
 
+    const token = localStorage.getItem('auth_token');
+
     // Socket.io automatically handles http/https to ws/wss conversion
     this.socket = io(config.apiUrl, {
       path: '/socket.io',
@@ -53,12 +56,15 @@ class WebSocketService {
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 1000,
+      auth: {
+        token: token || undefined,
+      },
     });
 
     this.socket.on('connect', () => {
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      console.log('[WebSocket] Connected');
+      appLogger.info('[WebSocket] Connected');
       
       // Subscribe to system events by default
       this.socket?.emit('subscribe:system');
@@ -66,17 +72,21 @@ class WebSocketService {
 
     this.socket.on('disconnect', (reason) => {
       this.isConnected = false;
-      console.log('[WebSocket] Disconnected:', reason);
+      appLogger.info(`[WebSocket] Disconnected: ${reason}`);
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('[WebSocket] Connection error:', error);
+      appLogger.error('[WebSocket] Connection error', error);
       this.reconnectAttempts++;
+    });
+
+    this.socket.on('subscription_error', (data: { message: string }) => {
+      appLogger.warn(`[WebSocket] Subscription error: ${data?.message ?? 'unknown'}`);
     });
 
     // Listen for bot events
     this.socket.on('bot_event', (event: FreqHubEvent) => {
-      console.log('[WebSocket] Received bot_event:', event.type, 'for bot:', event.botId, event);
+      appLogger.debug(`[WebSocket] Received bot_event: ${event.type} for bot: ${event.botId ?? 'unknown'}`, event);
       this.handleEvent('bot_event', event);
       this.handleEvent(`bot_event:${event.botId}`, event);
     });
@@ -93,11 +103,11 @@ class WebSocketService {
 
     // Listen for subscription confirmations
     this.socket.on('subscribed', (data: { room: string }) => {
-      console.log('[WebSocket] Subscribed to:', data.room);
+      appLogger.info(`[WebSocket] Subscribed to: ${data.room}`);
     });
 
     this.socket.on('unsubscribed', (data: { room: string }) => {
-      console.log('[WebSocket] Unsubscribed from:', data.room);
+      appLogger.info(`[WebSocket] Unsubscribed from: ${data.room}`);
     });
   }
 
@@ -184,7 +194,7 @@ class WebSocketService {
         try {
           callback(event);
         } catch (error) {
-          console.error('[WebSocket] Error in event callback:', error);
+          appLogger.error('[WebSocket] Error in event callback', error);
         }
       });
     }
@@ -196,7 +206,7 @@ class WebSocketService {
         try {
           callback(event);
         } catch (error) {
-          console.error('[WebSocket] Error in wildcard callback:', error);
+          appLogger.error('[WebSocket] Error in wildcard callback', error);
         }
       });
     }

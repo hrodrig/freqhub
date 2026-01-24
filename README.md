@@ -19,6 +19,7 @@
 # FreqHub
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Version](https://img.shields.io/badge/version-0.2.10-blue.svg)](https://github.com/hrodrig/freqhub/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
@@ -26,35 +27,28 @@
 
 ## 📦 Version
 
-**Current Version: 0.2.8**
+**Current Version: 0.2.10**
 
-### What's New in 0.2.8
+### What's New in 0.2.10
 
-This release introduces a **major feature update** with a complete Telegram-like command interface and significant infrastructure improvements:
+This release focuses on **security hardening, operational safety, and observability**:
 
-- **🎨 BotCommandChat Component**: Full Telegram-style command interface for interacting with bots
-  - 40+ Freqtrade commands supported with exact Telegram formatting
-  - Real-time command execution with formatted responses
-  - Quick command buttons with hover tooltips
-  - Clickable commands in help messages
+- **🔒 Production hardening**:
+  - SSRF protection for bot API/WebSocket URLs (blocks localhost/private targets)
+  - Swagger disabled by default in production
+  - Health detail endpoints restricted to `superadmin`/`auditor`
+  - Auth lockout support and bootstrap admin configuration
 
-- **📊 Dashboard Enhancements**: 
-  - Added Win Rate column showing bot performance
-  - Cleaner interface (removed UUID display)
-  - Real-time updates when trades open/close
+- **🛡️ Nginx security defaults**:
+  - Rate limiting for API routes
+  - Security headers + CSP (Report-Only)
+  - Dotfiles blocked and static asset caching
 
-- **🔧 Infrastructure Improvements**:
-  - Replaced Makefile with cross-platform `freqhub` bash script
-  - Updated all Docker Compose commands to V2 syntax
-  - Improved error handling and network error messages
-  - Better proxy service with path normalization
+- **📈 Observability**:
+  - Timestamped logs in backend and frontend (WebSocket)
+  - WebSocket auth token support for subscriptions
 
-- **📋 UI/UX Improvements**:
-  - Currency table format in Bot Detail page
-  - Enhanced command interface with auto-focus and text retention
-  - Multi-stage status updates for control commands
-
-For complete details, see the [CHANGELOG.md](CHANGELOG.md#028---2026-01-17).
+For complete details, see the [CHANGELOG.md](CHANGELOG.md#0210---2026-01-24).
 
 ### Previous Features
 
@@ -566,6 +560,12 @@ RATE_LIMIT_WINDOW=60  # Time window in seconds (default: 60)
 **⚠️ Important**: After copying `env.example` to `.env`, edit the file and set secure values for:
 - `ENCRYPTION_KEY` (must be at least 32 characters)
 - `JWT_SECRET` (must be at least 32 characters)
+
+**Production hardening (required):**
+- Do **not** use the example/placeholder values for `ENCRYPTION_KEY` / `JWT_SECRET` in production.
+- Set `CORS_ORIGIN` to your **explicit** public frontend origin (no `*`).
+- In Kubernetes, load secrets via `Secret` (or a secret manager) rather than baking them into images.
+- See `SECURITY_REVIEWS.md` for the go-live checklist and security notes.
 
 See [ENV_SETUP.md](ENV_SETUP.md) for detailed configuration instructions.
 

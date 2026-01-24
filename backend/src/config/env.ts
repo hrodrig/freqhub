@@ -21,15 +21,29 @@ import { z } from 'zod';
 
 dotenv.config();
 
-const envSchema = z.object({
+const envSchema = z
+  .object({
   PORT: z.string().default('3001'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   DATABASE_PATH: z.string().default('./data/freqhub.db'),
   ENCRYPTION_KEY: z.string().min(32, 'Encryption key must be at least 32 characters'),
-  JWT_SECRET: z.string().min(32, 'JWT secret must be at least 32 characters').default('change-this-jwt-secret-in-production-min-32-chars'),
+  JWT_SECRET: z.string().min(32, 'JWT secret must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('24h'), // Token expiration (e.g., '24h', '7d', '30d')
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  // Swagger / API docs
+  SWAGGER_ENABLED: z
+    .string()
+    .default('false')
+    .transform((val) => val === 'true'),
+  // Bootstrap admin (first startup)
+  DEFAULT_ADMIN_USERNAME: z.string().default('freqhub'),
+  DEFAULT_ADMIN_EMAIL: z.string().email().default('admin@freqhub.local'),
+  // In production, this MUST be provided if no superadmin exists yet (and will NOT be logged).
+  DEFAULT_ADMIN_PASSWORD: z.string().min(12).optional(),
+  // Auth hardening
+  AUTH_LOCKOUT_THRESHOLD: z.string().default('10').transform((val) => parseInt(val, 10)),
+  AUTH_LOCKOUT_DURATION_SECONDS: z.string().default('900').transform((val) => parseInt(val, 10)),
   BASE_PATH: z.string().default('').transform((val) => {
     // Normalize base path: ensure it starts with / and doesn't end with /
     if (!val) return '';
@@ -48,13 +62,37 @@ const envSchema = z.object({
   RATE_LIMIT_ENABLED: z.string().default('true').transform((val) => val === 'true'),
   RATE_LIMIT_DEFAULT: z.string().default('60').transform((val) => parseInt(val, 10)), // requests per window
   RATE_LIMIT_WINDOW: z.string().default('60').transform((val) => parseInt(val, 10)), // seconds
-});
+})
+  .superRefine((val, ctx) => {
+    if (val.NODE_ENV !== 'production') return;
+
+    // Prevent shipping with placeholder secrets in production.
+    const jwtLower = val.JWT_SECRET.toLowerCase();
+    const encLower = val.ENCRYPTION_KEY.toLowerCase();
+    const hasPlaceholder = (s: string) => s.includes('change-this') || s.includes('change me');
+
+    if (hasPlaceholder(jwtLower)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['JWT_SECRET'],
+        message: 'JWT_SECRET must be set to a strong value in production (do not use placeholder/default)',
+      });
+    }
+    if (hasPlaceholder(encLower)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ENCRYPTION_KEY'],
+        message: 'ENCRYPTION_KEY must be set to a strong value in production (do not use placeholder/default)',
+      });
+    }
+  });
 
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error('❌ Invalid environment variables:');
-  console.error(parsed.error.format());
+  const timestamp = new Date().toISOString();
+  console.error(`[${timestamp}] [ERROR] ❌ Invalid environment variables:`);
+  console.error(`[${timestamp}] [ERROR]`, parsed.error.format());
   process.exit(1);
 }
 

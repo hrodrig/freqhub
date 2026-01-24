@@ -21,6 +21,15 @@ import { Server as HttpServer } from 'http';
 import { env } from '../config/env.js';
 import { eventBusService, FreqHubEvent } from './eventBus.service.js';
 import { appLogger } from '../utils/logger.js';
+import { verifyToken } from './authService.js';
+import { getUserByIdDB } from './userService.js';
+import { getBotsOwnedByUser } from './botOwnershipService.js';
+
+type SocketUser = {
+  id: string;
+  username: string;
+  role: 'superadmin' | 'auditor' | 'user';
+};
 
 /**
  * WebSocket Service
@@ -42,13 +51,71 @@ class WebSocketService {
       path: '/socket.io',
     });
 
+    // Auth middleware (JWT required)
+    this.io.use((socket, next) => {
+      try {
+        const token =
+          (socket.handshake.auth && (socket.handshake.auth as any).token) ||
+          (typeof socket.handshake.headers.authorization === 'string' &&
+            socket.handshake.headers.authorization.startsWith('Bearer ')
+            ? socket.handshake.headers.authorization.substring(7)
+            : null);
+
+        if (!token) {
+          return next(new Error('Unauthorized'));
+        }
+
+        const payload = verifyToken(token);
+        if (!payload) {
+          return next(new Error('Unauthorized'));
+        }
+
+        const user = getUserByIdDB(payload.userId);
+        if (!user || user.is_active === 0) {
+          return next(new Error('Unauthorized'));
+        }
+
+        (socket.data as any).user = {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+        } satisfies SocketUser;
+
+        return next();
+      } catch (err) {
+        appLogger.warn('WebSocket: auth middleware error', err);
+        return next(new Error('Unauthorized'));
+      }
+    });
+
     this.io.on('connection', (socket) => {
       const clientId = socket.id;
-      appLogger.info(`WebSocket: Client connected [${clientId}]`);
+      const user = (socket.data as any).user as SocketUser | undefined;
+      appLogger.info(
+        `WebSocket: Client connected [${clientId}] user=${user?.username || 'unknown'} role=${user?.role || 'unknown'}`
+      );
 
       // Clients can join rooms to receive specific updates
       socket.on('subscribe:bot', (botId: string) => {
         if (!botId) return;
+
+        const socketUser = (socket.data as any).user as SocketUser | undefined;
+        if (!socketUser) {
+          socket.emit('subscription_error', { message: 'Unauthorized' });
+          return;
+        }
+
+        // Authorization: user must have view access to the bot
+        const canView =
+          socketUser.role === 'superadmin' ||
+          socketUser.role === 'auditor' ||
+          getBotsOwnedByUser(socketUser.id).includes(botId);
+
+        if (!canView) {
+          socket.emit('subscription_error', { message: 'Forbidden' });
+          return;
+        }
+
         socket.join(`bot:${botId}`);
         appLogger.info(`WebSocket: Client [${clientId}] subscribed to bot [${botId}]`);
         
@@ -67,6 +134,11 @@ class WebSocketService {
 
       // Global system subscription
       socket.on('subscribe:system', () => {
+        const socketUser = (socket.data as any).user as SocketUser | undefined;
+        if (!socketUser) {
+          socket.emit('subscription_error', { message: 'Unauthorized' });
+          return;
+        }
         socket.join('system');
         appLogger.info(`WebSocket: Client [${clientId}] subscribed to system events`);
         socket.emit('subscribed', { room: 'system' });

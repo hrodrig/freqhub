@@ -17,23 +17,25 @@
  */
 
 import { create } from 'zustand';
+import { applyTheme, getInitialTheme, setStoredTheme, type ThemeMode } from '../utils/theme.js';
 
 interface UIStore {
-  theme: 'light' | 'dark';
+  theme: ThemeMode;
   sidebarOpen: boolean;
 
   // Actions
-  setTheme: (theme: 'light' | 'dark') => void;
+  setTheme: (theme: ThemeMode) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  theme: (localStorage.getItem('theme') as 'light' | 'dark') || 'dark',
+  theme: getInitialTheme(),
   sidebarOpen: true,
 
-  setTheme: (theme: 'light' | 'dark') => {
-    localStorage.setItem('theme', theme);
+  setTheme: (theme: ThemeMode) => {
+    setStoredTheme(theme);
+    applyTheme(theme);
     set({ theme });
   },
 

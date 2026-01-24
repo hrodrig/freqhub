@@ -22,6 +22,7 @@ import { ArrowLeft, Loader2, AlertCircle, Play, Square, Pause, RotateCcw } from 
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card.js';
 import { BotCommandChat } from '../components/BotCommandChat.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
+import { appLogger } from '../utils/logger.js';
 import type { Bot } from '../types/bot.js';
 import type { Trade } from '../types/trade.js';
 import type { BalanceResponse } from '../types/balance.js';
@@ -92,7 +93,7 @@ export function BotDetail() {
           });
         }
       } catch (err) {
-        console.error('Failed to load config:', err);
+        appLogger.error('Failed to load config:', err);
         setStatus(null);
       }
 
@@ -104,7 +105,7 @@ export function BotDetail() {
         setOpenTrades(open);
         setClosedTrades(closed.slice(0, 100)); // Last 100 closed trades
       } catch (err) {
-        console.error('Failed to load trades:', err);
+        appLogger.error('Failed to load trades:', err);
         setOpenTrades([]);
         setClosedTrades([]);
       }
@@ -114,11 +115,11 @@ export function BotDetail() {
         const balanceData = (await proxyApi.get(id, 'api/v1/balance')) as BalanceResponse;
         setBalance(balanceData);
       } catch (err) {
-        console.error('Failed to load balance:', err);
+        appLogger.error('Failed to load balance:', err);
         setBalance(null);
       }
     } catch (err) {
-      console.error('Failed to load data:', err);
+      appLogger.error('Failed to load data:', err);
     }
   }, [id]);
 
@@ -133,7 +134,7 @@ export function BotDetail() {
         loadData();
       }, 1500);
     } catch (err) {
-      console.error(`Failed to ${action} bot:`, err);
+      appLogger.error(`Failed to ${action} bot:`, err);
       alert(err instanceof Error ? err.message : `Failed to ${action} bot`);
     } finally {
       setActionLoading(null);
