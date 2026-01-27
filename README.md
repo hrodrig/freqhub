@@ -274,6 +274,11 @@ npm run dev
 
 The backend will start on `http://localhost:3001` and the frontend on `http://localhost:3000`.
 
+**Note (Local CORS):**
+If you open the frontend at `http://127.0.0.1:3000`, update `CORS_ORIGIN` in `backend/.env`
+to match that origin (or just use `http://localhost:3000` to avoid CORS errors).
+Backend and frontend use separate env files: `backend/.env` and `frontend/.env`.
+
 **⚠️ Important for Local Development:**
 
 Before running `./freqhub dev` or starting the backend manually, you need to start Valkey and Freqtrade bots:

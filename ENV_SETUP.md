@@ -38,7 +38,12 @@ By using this software, you acknowledge that:
 
 ## Setup
 
-1. **Create a `.env` file** in the project root (copy from example below):
+1. **Create `.env` files per app** (backend and frontend are separate):
+
+   - Backend: `backend/.env` (copy from `backend/env.example`)
+   - Frontend: `frontend/.env` (copy from `frontend/env.example`)
+
+2. **Backend `.env` example**:
 
 ```bash
 # Encryption Key (MUST be at least 32 characters)
@@ -57,6 +62,10 @@ NODE_ENV=development
 CORS_ORIGIN=http://localhost:3000
 LOG_LEVEL=info
 
+# Note (Local CORS):
+# If you open the frontend at http://127.0.0.1:3000, update CORS_ORIGIN in backend/.env
+# to match that exact origin (or just use http://localhost:3000 to avoid CORS errors).
+
 # Valkey/Redis Configuration (optional)
 VALKEY_ENABLED=false
 VALKEY_HOST=localhost
@@ -67,9 +76,9 @@ VALKEY_PASSWORD=
 BASE_PATH=/
 ```
 
-2. **For Docker Compose**: The compose files will automatically use the `ENCRYPTION_KEY` from your `.env` file if it exists, or fall back to the default value.
+3. **For Docker Compose**: The compose files will automatically use the `ENCRYPTION_KEY` from `backend/.env` if it exists, or fall back to the default value.
 
-3. **For Local Development**: The backend will automatically load the `.env` file from the project root.
+4. **For Local Development**: The backend will automatically load `backend/.env`.
 
 ## Default Values
 
