@@ -25,6 +25,7 @@ import { DashboardMock } from './pages/DashboardMock.js';
 import { BotManagement } from './pages/BotManagement.js';
 import { BotDetail } from './pages/BotDetail.js';
 import { BotComparison } from './pages/BotComparison.js';
+import { ConfigManagement } from './pages/ConfigManagement.js';
 import { Login } from './pages/Login.js';
 import { AuditLogs } from './pages/AuditLogs.js';
 import { Profile } from './pages/Profile.js';
@@ -55,6 +56,9 @@ function Navigation() {
         </Link>
         <Link to="/compare" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Compare
+        </Link>
+        <Link to="/configs" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
+          Configs
         </Link>
         {(user?.role === 'superadmin' || user?.role === 'auditor') && (
           <Link to="/audit" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
@@ -179,6 +183,11 @@ function AppRoutes() {
           <Route path="/compare" element={
             <PrivateRoute>
               <BotComparison />
+            </PrivateRoute>
+          } />
+          <Route path="/configs" element={
+            <PrivateRoute>
+              <ConfigManagement />
             </PrivateRoute>
           } />
           <Route path="/audit" element={

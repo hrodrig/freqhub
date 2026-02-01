@@ -28,6 +28,8 @@ export interface Bot {
   notes?: string;
   isEnabled: boolean;
   isSelected: boolean;
+  configMapName?: string | null;
+  configPath?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -42,6 +44,8 @@ export interface CreateBotRequest {
   username: string;
   password: string;
   notes?: string;
+  configMapName?: string;
+  configPath?: string;
 }
 
 /**
@@ -56,5 +60,7 @@ export interface UpdateBotRequest {
   notes?: string;
   isEnabled?: boolean;
   isSelected?: boolean;
+  configMapName?: string;
+  configPath?: string;
 }
 

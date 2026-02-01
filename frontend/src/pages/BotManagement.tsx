@@ -16,9 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, X, Edit, Trash2, TestTube, CheckCircle2, XCircle, Loader2, Play, Square, Pause, RotateCcw, Settings, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useBotStore } from '../stores/botStore.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
 import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
@@ -47,6 +47,10 @@ interface BotStatus {
 export function BotManagement() {
   const { user } = useAuth();
   const { bots, fetchBots, removeBot, updateBot: updateBotInStore } = useBotStore();
+  const location = useLocation();
+  const handledEditRef = useRef<string | null>(null);
+  const statusLoadRef = useRef({ lastRunAt: 0, inFlight: false });
+  const botsRef = useRef(bots);
   const [showForm, setShowForm] = useState(false);
   const [editingBot, setEditingBot] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateBotRequest & { isEnabled: boolean }>({
@@ -55,6 +59,8 @@ export function BotManagement() {
     username: '',
     password: '',
     notes: '',
+    configMapName: '',
+    configPath: '',
     isEnabled: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,6 +73,10 @@ export function BotManagement() {
   useEffect(() => {
     fetchBots();
   }, [fetchBots]);
+
+  useEffect(() => {
+    botsRef.current = bots;
+  }, [bots]);
 
   // Connect to WebSocket on mount
   useEffect(() => {
@@ -96,137 +106,155 @@ export function BotManagement() {
   }, [bots]);
 
   // Helper to normalize Freqtrade states (e.g., "running" to "RUNNING")
-  const normalizeState = (state?: string | null) => {
+  const normalizeState = useCallback((state?: string | null) => {
     return state ? state.toUpperCase() : undefined;
-  };
+  }, []);
 
   // Helper function to add timeout to a promise
-  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  const withTimeout = useCallback(<T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
     return Promise.race([
       promise,
       new Promise<T>((_, reject) =>
         setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
       ),
     ]);
-  };
+  }, []);
 
   // Function to load bot statuses (reusable)
   const loadBotStatuses = useCallback(
-    async (specificBotId?: string) => {
-      const botsToLoad = specificBotId
-        ? bots.filter((b) => b.id === specificBotId && b.isEnabled)
-        : bots.filter((b) => b.isEnabled);
-
-      if (botsToLoad.length === 0) return;
-
-      if (!specificBotId) {
-        setIsLoadingStatus(true);
+    async (specificBotId?: string, options?: { force?: boolean }) => {
+      const now = Date.now();
+      const minIntervalMs = 8000;
+      if (!options?.force) {
+        if (statusLoadRef.current.inFlight) return;
+        if (now - statusLoadRef.current.lastRunAt < minIntervalMs) return;
       }
+      if (statusLoadRef.current.inFlight) return;
+      statusLoadRef.current.inFlight = true;
+      statusLoadRef.current.lastRunAt = now;
 
-      const statusPromises = botsToLoad.map(async (bot) => {
-        try {
-          // First check if bot is alive with ping (short timeout: 3 seconds)
-          const pingResult = await withTimeout(
-            proxyApi.get(bot.id, 'api/v1/ping').catch(() => null),
-            3000
-          ).catch(() => null);
-          const isOnline = pingResult !== null;
+      try {
+        const botsToLoad = specificBotId
+          ? botsRef.current.filter((b) => b.id === specificBotId && b.isEnabled)
+          : botsRef.current.filter((b) => b.isEnabled);
 
-          if (!isOnline) {
+        if (botsToLoad.length === 0) {
+          return;
+        }
+
+        if (!specificBotId) {
+          setIsLoadingStatus(true);
+        }
+
+        const statusPromises = botsToLoad.map(async (bot) => {
+          try {
+            // First check if bot is alive with ping (short timeout: 3 seconds)
+            const pingResult = await withTimeout(
+              proxyApi.get(bot.id, 'api/v1/ping').catch(() => null),
+              3000
+            ).catch(() => null);
+            const isOnline = pingResult !== null;
+
+            if (!isOnline) {
+              return {
+                botId: bot.id,
+                status: null,
+                error: 'Bot is offline or unreachable',
+                isOnline: false,
+              };
+            }
+
+            // Get bot state, open trades, and profit in parallel (only if bot is online)
+            // Use shorter timeout (5 seconds) for these requests
+            const [configData, openTrades, profit] = await Promise.allSettled([
+              withTimeout(proxyApi.get(bot.id, 'api/v1/show_config'), 5000).catch(() => null),
+              withTimeout(proxyApi.get(bot.id, 'api/v1/status'), 5000).catch(() => []),
+              withTimeout(proxyApi.get(bot.id, 'api/v1/profit'), 5000).catch(() => null),
+            ]).then((results) =>
+              results.map((r) => (r.status === 'fulfilled' ? r.value : null))
+            );
+
+            const tradesArray = Array.isArray(openTrades) ? openTrades : [];
+            const profitData = profit as { profit_closed_coin?: number; profit_closed_percent?: number } | null;
+            
+            // Extract bot configuration data
+            const config = configData && typeof configData === 'object' ? configData as {
+              state?: string;
+              runmode?: string;
+              dry_run?: boolean;
+              exchange?: string;
+              strategy?: string;
+              timeframe?: string;
+              stoploss?: number;
+            } : null;
+            
+            const botState = config?.state;
+            const runmode = config?.runmode || (config?.dry_run !== undefined ? (config.dry_run ? 'dry_run' : 'live') : undefined);
+            const exchange = config?.exchange;
+            const strategy = config?.strategy;
+            const timeframe = config?.timeframe;
+            const stoploss = config?.stoploss;
+
+            const status = {
+              state: botState,
+              runmode: runmode,
+              exchange: exchange,
+              strategy: strategy,
+              timeframe: timeframe,
+              stoploss: stoploss,
+              trade_count: tradesArray.length,
+              profit_closed_coin: profitData?.profit_closed_coin,
+              profit_closed_percent: profitData?.profit_closed_percent,
+            };
+            return { botId: bot.id, status, isOnline: true };
+          } catch (err) {
             return {
               botId: bot.id,
               status: null,
-              error: 'Bot is offline or unreachable',
+              error: err instanceof Error ? err.message : 'Failed to load status',
               isOnline: false,
             };
           }
+        });
 
-          // Get bot state, open trades, and profit in parallel (only if bot is online)
-          // Use shorter timeout (5 seconds) for these requests
-          const [configData, openTrades, profit] = await Promise.allSettled([
-            withTimeout(proxyApi.get(bot.id, 'api/v1/show_config'), 5000).catch(() => null),
-            withTimeout(proxyApi.get(bot.id, 'api/v1/status'), 5000).catch(() => []),
-            withTimeout(proxyApi.get(bot.id, 'api/v1/profit'), 5000).catch(() => null),
-          ]).then((results) =>
-            results.map((r) => (r.status === 'fulfilled' ? r.value : null))
-          );
-
-          const tradesArray = Array.isArray(openTrades) ? openTrades : [];
-          const profitData = profit as { profit_closed_coin?: number; profit_closed_percent?: number } | null;
-          
-          // Extract bot configuration data
-          const config = configData && typeof configData === 'object' ? configData as {
-            state?: string;
-            runmode?: string;
-            dry_run?: boolean;
-            exchange?: string;
-            strategy?: string;
-            timeframe?: string;
-            stoploss?: number;
-          } : null;
-          
-          const botState = config?.state;
-          const runmode = config?.runmode || (config?.dry_run !== undefined ? (config.dry_run ? 'dry_run' : 'live') : undefined);
-          const exchange = config?.exchange;
-          const strategy = config?.strategy;
-          const timeframe = config?.timeframe;
-          const stoploss = config?.stoploss;
-
-          const status = {
-            state: botState,
-            runmode: runmode,
-            exchange: exchange,
-            strategy: strategy,
-            timeframe: timeframe,
-            stoploss: stoploss,
-            trade_count: tradesArray.length,
-            profit_closed_coin: profitData?.profit_closed_coin,
-            profit_closed_percent: profitData?.profit_closed_percent,
-          };
-          return { botId: bot.id, status, isOnline: true };
-        } catch (err) {
-          return {
-            botId: bot.id,
+        // Use Promise.allSettled to not block on individual failures
+        const results = await Promise.allSettled(statusPromises);
+        const statuses = results.map((result, index) =>
+          result.status === 'fulfilled' ? result.value : {
+            botId: botsToLoad[index]?.id || 'unknown',
             status: null,
-            error: err instanceof Error ? err.message : 'Failed to load status',
+            error: result.reason instanceof Error ? result.reason.message : 'Failed to load status',
             isOnline: false,
-          };
-        }
-      });
-
-      // Use Promise.allSettled to not block on individual failures
-      const results = await Promise.allSettled(statusPromises);
-      const statuses = results.map((result, index) =>
-        result.status === 'fulfilled' ? result.value : {
-          botId: botsToLoad[index]?.id || 'unknown',
-          status: null,
-          error: result.reason instanceof Error ? result.reason.message : 'Failed to load status',
-          isOnline: false,
-        }
-      );
-      
-      if (specificBotId) {
-        // Update only the specific bot
-        setBotStatuses((prev) =>
-          prev.map((s) => {
-            const updated = statuses.find((ns) => ns.botId === s.botId);
-            return updated || s;
-          })
+          }
         );
-      } else {
-        // Update all statuses
-        setBotStatuses(statuses);
-        setIsLoadingStatus(false);
+        
+        if (specificBotId) {
+          // Update only the specific bot
+          setBotStatuses((prev) =>
+            prev.map((s) => {
+              const updated = statuses.find((ns) => ns.botId === s.botId);
+              return updated || s;
+            })
+          );
+        } else {
+          // Update all statuses
+          setBotStatuses(statuses);
+        }
+      } finally {
+        if (!specificBotId) {
+          setIsLoadingStatus(false);
+        }
+        statusLoadRef.current.inFlight = false;
       }
     },
-    [bots]
+    [withTimeout]
   );
 
   // Handle individual bot refresh
   const handleRefreshBot = async (botId: string) => {
     setActionLoading((prev) => ({ ...prev, [botId]: 'refresh' }));
     try {
-      await loadBotStatuses(botId);
+      await loadBotStatuses(botId, { force: true });
     } finally {
       setActionLoading((prev) => {
         const next = { ...prev };
@@ -238,7 +266,7 @@ export function BotManagement() {
 
   // Load initial statuses only (WebSockets handle real-time updates)
   useEffect(() => {
-    loadBotStatuses();
+    loadBotStatuses(undefined, { force: true });
   }, [loadBotStatuses]);
 
   // Listen to WebSocket events for real-time updates
@@ -448,6 +476,8 @@ export function BotManagement() {
           username: formData.username,
           notes: formData.notes,
           isEnabled: formData.isEnabled,
+          configMapName: formData.configMapName,
+          configPath: formData.configPath,
         };
         if (formData.password) {
           updateData.password = formData.password;
@@ -463,12 +493,23 @@ export function BotManagement() {
           username: formData.username,
           password: formData.password,
           notes: formData.notes,
+          configMapName: formData.configMapName,
+          configPath: formData.configPath,
         };
         await botApi.create(createData);
         await fetchBots();
       }
       setShowForm(false);
-      setFormData({ name: '', apiUrl: '', username: '', password: '', notes: '', isEnabled: true });
+      setFormData({
+        name: '',
+        apiUrl: '',
+        username: '',
+        password: '',
+        notes: '',
+        configMapName: '',
+        configPath: '',
+        isEnabled: true,
+      });
       setShowPassword(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save bot');
@@ -477,7 +518,16 @@ export function BotManagement() {
     }
   };
 
-  const handleEdit = (bot: { id: string; name: string; apiUrl: string; username: string; notes?: string; isEnabled: boolean }) => {
+  const handleEdit = useCallback((bot: {
+    id: string;
+    name: string;
+    apiUrl: string;
+    username: string;
+    notes?: string;
+    isEnabled: boolean;
+    configMapName?: string | null;
+    configPath?: string | null;
+  }) => {
     if (user?.role === 'auditor') {
       setError('Read-only: auditors cannot edit bots.');
       return;
@@ -498,15 +548,39 @@ export function BotManagement() {
       username: bot.username,
       password: '', // Don't pre-fill password
       notes: bot.notes || '',
+      configMapName: bot.configMapName || '',
+      configPath: bot.configPath || '',
       isEnabled: bot.isEnabled,
     });
     setShowForm(true);
-  };
+  }, [botStatuses, normalizeState, user?.role]);
+
+  useEffect(() => {
+    if (!bots.length) return;
+    const params = new URLSearchParams(location.search);
+    const editId = params.get('edit');
+    if (!editId) return;
+    if (handledEditRef.current === editId) return;
+    handledEditRef.current = editId;
+    const bot = bots.find((b) => b.id === editId);
+    if (bot) {
+      handleEdit(bot);
+    }
+  }, [bots, handleEdit, location.search]);
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingBot(null);
-    setFormData({ name: '', apiUrl: '', username: '', password: '', notes: '', isEnabled: true });
+    setFormData({
+      name: '',
+      apiUrl: '',
+      username: '',
+      password: '',
+      notes: '',
+      configMapName: '',
+      configPath: '',
+      isEnabled: true,
+    });
   };
 
   const handleDelete = async (id: string) => {
@@ -663,6 +737,50 @@ export function BotManagement() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
+                    ConfigMap Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.configMapName || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({
+                        ...formData,
+                        configMapName: value,
+                        configPath: value ? '' : formData.configPath,
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="e.g., freqtrade-bot-1-config"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Kubernetes reference only. For runmode changes, set a writable Config Path (PVC).
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Config Path (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.configPath || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({
+                        ...formData,
+                        configPath: value,
+                        configMapName: value ? '' : formData.configMapName,
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                    placeholder="/freqtrade/user_data/config.json"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Required to enable dry-run/live changes (Docker and K8s via writable volume). Example: bot-1/config.json when RUNMODE_CONFIG_BASE_DIR is set.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     Notes
                   </label>
                   <textarea
@@ -721,9 +839,18 @@ export function BotManagement() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 ring-1 ring-primary/40 flex items-center gap-2"
                   >
-                    {isSubmitting ? 'Saving...' : editingBot ? 'Update Bot' : 'Create Bot'}
+                    {isSubmitting ? (
+                      'Saving...'
+                    ) : editingBot ? (
+                      'Update Bot'
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Create Bot
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -831,6 +958,12 @@ export function BotManagement() {
                             <p>
                               <span className="font-medium">Username:</span> {bot.username}
                             </p>
+                            {bot.configMapName && (
+                              <p>
+                                <span className="font-medium">ConfigMap:</span>{' '}
+                                <span className="font-mono text-xs">{bot.configMapName}</span>
+                              </p>
+                            )}
                             {status?.error ? (
                               <p className="text-red-500">Error: {status.error}</p>
                             ) : status?.status && bot.isEnabled ? (

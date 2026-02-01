@@ -71,6 +71,17 @@ export const botApi = {
     );
     return response.data;
   },
+
+  /**
+   * Update bot runmode (dry_run/live)
+   */
+  setRunmode: async (id: string, runmode: 'dry_run' | 'live'): Promise<{ runmode: string; previousRunmode: string | null }> => {
+    const response = await apiClient.post<{ status: string; data: { runmode: string; previousRunmode: string | null } }>(
+      `/bots/${id}/runmode`,
+      { runmode }
+    );
+    return response.data.data;
+  },
 };
 
 /**
