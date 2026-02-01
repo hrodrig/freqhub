@@ -35,6 +35,10 @@
 !frontend/**/*
 !backend/
 !backend/**/*
+!config-service/
+!config-service/**/*
+!config-agent/
+!config-agent/**/*
 !src/
 !src/**/*
 !*.ts
@@ -87,7 +91,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
-!.env.example
+!env.example
 
 # ============================================
 # EDITOR & IDE
@@ -152,50 +156,51 @@ lerna-debug.log*
 # EXAMPLES
 # ============================================
 
-# Examples directory (include)
+# Examples directory (include only selected files)
 !examples/
-!examples/**/*
 
-# Exclude files starting with dot in examples (except .keep and .env.example)
+# Allow documentation in examples
+!examples/README.md
+!examples/**/*.md
+
+# Docker examples (allow compose/docs/scripts/config examples)
+!examples/docker/
+!examples/docker/README.md
+!examples/docker/docker-compose*.yml
+!examples/docker/env.example
+!examples/docker/config.json.example
+!examples/docker/setup.sh
+
+# Kubernetes examples (allow manifests/docs explicitly)
+!examples/kubernetes/
+!examples/kubernetes/.keep
+!examples/kubernetes/README.md
+!examples/kubernetes/backend-egress-networkpolicy.yaml
+!examples/kubernetes/backend-pvc.yaml
+!examples/kubernetes/backend.yaml
+!examples/kubernetes/frontend-nginx-configmap.yaml
+!examples/kubernetes/frontend.yaml
+!examples/kubernetes/ingressroute.example.yaml
+!examples/kubernetes/valkey-configmap.yaml
+!examples/kubernetes/valkey-pvc.yaml
+!examples/kubernetes/valkey.yaml
+
+# Keep only .keep inside example data directories
+examples/docker/freqtrade-data-*/**
+!examples/docker/freqtrade-data-*/.keep
+examples/docker/freqhub-data/**
+!examples/docker/freqhub-data/.keep
+examples/docker/valkey-data/**
+!examples/docker/valkey-data/.keep
+
+# Exclude files starting with dot in examples (except .keep)
 examples/**/.*
 !examples/**/.keep
-!examples/**/.env.example
+!examples/**/env.example
 
-# Exclude sensitive files in examples
-examples/**/.env
+# Exclude sensitive files in examples (keep example secrets)
 examples/**/secret.yaml
 !examples/**/secret.yaml.example
-
-# Include Freqtrade data directories and configs (in examples/docker/)
-!examples/docker/freqtrade-data-*/
-!examples/docker/freqtrade-data-*/config.json
-!examples/docker/freqtrade-data-*/strategies/
-!examples/docker/freqtrade-data-*/strategies/*.py
-
-# Exclude generated files inside freqtrade-data directories
-examples/docker/freqtrade-data-*/*.db
-examples/docker/freqtrade-data-*/*.sqlite
-examples/docker/freqtrade-data-*/*.sqlite-shm
-examples/docker/freqtrade-data-*/*.sqlite-wal
-examples/docker/freqtrade-data-*/*.sqlite3
-
-# Exclude FreqHub database files in examples/docker
-examples/docker/**/*.db
-examples/docker/**/*.db-shm
-examples/docker/**/*.db-wal
-examples/docker/freqtrade-data-*/logs/
-examples/docker/freqtrade-data-*/.freqtrade/
-examples/docker/freqtrade-data-*/backtest_results/
-examples/docker/freqtrade-data-*/hyperopt_results/
-examples/docker/freqtrade-data-*/data/
-examples/docker/freqtrade-data-*/plot/
-
-# Valkey data in examples (exclude generated files, but include .keep)
-examples/docker/valkey-data/*.aof
-examples/docker/valkey-data/appendonly.aof
-examples/docker/valkey-data/dump.rdb
-examples/docker/valkey-data/appendonlydir/
-!examples/docker/valkey-data/.keep
 
 # ============================================
 # CI/CD
@@ -256,16 +261,9 @@ examples/docker/valkey-data/appendonlydir/
 # ============================================
 
 # Exclude development databases
-backend/data/*.db
-backend/data/*.db-shm
-backend/data/*.db-wal
+backend/data/**/*
+!backend/data/.keep
 !backend/data/freqhub.db.example
-
-# Valkey data files in backend/data (exclude AOF and RDB files)
-backend/data/*.aof
-backend/data/appendonly.aof
-backend/data/dump.rdb
-backend/data/appendonlydir/
 
 # ============================================
 # NOTE: As you add new files/directories to the project,
