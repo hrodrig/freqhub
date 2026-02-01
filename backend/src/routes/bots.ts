@@ -26,6 +26,8 @@ import {
   deleteBot,
 } from '../services/botService.js';
 import { testBotConnection } from '../services/proxyService.js';
+import { setBotRunmode, type BotRunmode } from '../services/runmodeEditor.service.js';
+import { createAuditLog } from '../services/auditService.js';
 import type { CreateBotRequest, UpdateBotRequest } from '../models/Bot.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireBotOwnershipOrSuperadmin, requireBotViewAccess } from '../middleware/authorize.middleware.js';
@@ -48,6 +50,18 @@ const createBotSchema = z.object({
   username: z.string().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
   notes: z.string().optional(),
+  configMapName: z.string().optional(),
+  configPath: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const hasConfigMap = Boolean(data.configMapName?.trim());
+  const hasConfigPath = Boolean(data.configPath?.trim());
+  if (hasConfigMap && hasConfigPath) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Provide either configMapName or configPath, not both',
+      path: ['configMapName'],
+    });
+  }
 });
 
 const updateBotSchema = z.object({
@@ -71,6 +85,22 @@ const updateBotSchema = z.object({
   isEnabled: z.boolean().optional(),
   isSelected: z.boolean().optional(),
   notes: z.string().optional(),
+  configMapName: z.string().optional(),
+  configPath: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const hasConfigMap = Boolean(data.configMapName?.trim());
+  const hasConfigPath = Boolean(data.configPath?.trim());
+  if (hasConfigMap && hasConfigPath) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Provide either configMapName or configPath, not both',
+      path: ['configMapName'],
+    });
+  }
+});
+
+const runmodeSchema = z.object({
+  runmode: z.enum(['dry_run', 'live']),
 });
 
 export function createBotsRouter(): Router {
@@ -351,6 +381,96 @@ export function createBotsRouter(): Router {
       return res.status(500).json({
         status: 'error',
         message: error instanceof Error ? error.message : 'Failed to update bot',
+      });
+    }
+  });
+
+  /**
+   * @swagger
+   * /api/bots/{id}/runmode:
+   *   post:
+   *     summary: Update bot runmode (dry_run/live)
+   *     description: Updates bot runmode by editing config.json and reloading config
+   *     tags: [Bots]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Bot ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               runmode:
+   *                 type: string
+   *                 enum: [dry_run, live]
+   *     responses:
+   *       200:
+   *         description: Runmode updated successfully
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Server error
+   */
+  router.post('/:id/runmode', requireBotOwnershipOrSuperadmin, async (req: Request, res: Response) => {
+    try {
+      const validated = runmodeSchema.parse(req.body);
+      const result = await setBotRunmode(req.params.id, validated.runmode as BotRunmode);
+
+      try {
+        const userId = req.user?.id ?? 'system';
+        createAuditLog({
+          userId,
+          action: 'runmode_change',
+          actionCategory: 'system_action',
+          resourceType: 'bot',
+          resourceId: req.params.id,
+          oldValue: { runmode: result.previousRunmode },
+          newValue: { runmode: result.runmode },
+          changedFields: ['runmode'],
+          details: {
+            configPath: result.configPath,
+            method: req.method,
+            path: req.path,
+          },
+          ipAddress: req.ip || req.socket.remoteAddress || undefined,
+          userAgent: req.get('user-agent') || undefined,
+        });
+      } catch {
+        // Don't fail the request if audit logging fails
+      }
+
+      return res.json({
+        status: 'success',
+        data: {
+          runmode: result.runmode,
+          previousRunmode: result.previousRunmode,
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Validation error',
+          errors: error.errors,
+        });
+      }
+      const message = error instanceof Error ? error.message : 'Failed to update runmode';
+      const status = message.includes('disabled') ||
+        message.includes('not set') ||
+        message.includes('not allowed') ||
+        message.includes('parse') ||
+        message.includes('not found')
+        ? 400
+        : 500;
+      return res.status(status).json({
+        status: 'error',
+        message,
       });
     }
   });

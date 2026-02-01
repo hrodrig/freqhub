@@ -32,6 +32,8 @@ export interface BotDB {
   is_enabled: number; // 1 = true, 0 = false
   is_selected: number; // 1 = true, 0 = false
   notes: string | null;
+  configmap_name?: string | null;
+  config_path?: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: number;
@@ -51,6 +53,8 @@ export const createBotsTable = `
     is_enabled INTEGER DEFAULT 1,
     is_selected INTEGER DEFAULT 0,
     notes TEXT,
+    configmap_name TEXT,
+    config_path TEXT,
     created_by TEXT,
     updated_by TEXT,
     created_at INTEGER NOT NULL,

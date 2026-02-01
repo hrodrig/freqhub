@@ -30,6 +30,8 @@ export interface Bot {
   isEnabled: boolean;
   isSelected: boolean;
   notes?: string | null;
+  configMapName?: string | null;
+  configPath?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -44,6 +46,8 @@ export interface CreateBotRequest {
   username: string;
   password: string;
   notes?: string;
+  configMapName?: string;
+  configPath?: string;
 }
 
 /**
@@ -58,6 +62,8 @@ export interface UpdateBotRequest {
   isEnabled?: boolean;
   isSelected?: boolean;
   notes?: string;
+  configMapName?: string;
+  configPath?: string;
 }
 
 /**
@@ -74,6 +80,8 @@ export function botDBToBot(botDB: BotDB): Bot {
     isSelected: botDB.is_selected === 1,
     // Handle notes field - it might not exist in older databases
     notes: 'notes' in botDB ? (botDB.notes || null) : null,
+    configMapName: 'configmap_name' in botDB ? (botDB.configmap_name || null) : null,
+    configPath: 'config_path' in botDB ? (botDB.config_path || null) : null,
     createdAt: botDB.created_at,
     updatedAt: botDB.updated_at,
   };
@@ -92,6 +100,8 @@ export function botToBotDB(bot: Partial<Bot>): Partial<BotDB> {
   if (bot.isEnabled !== undefined) botDB.is_enabled = bot.isEnabled ? 1 : 0;
   if (bot.isSelected !== undefined) botDB.is_selected = bot.isSelected ? 1 : 0;
   if (bot.notes !== undefined) botDB.notes = bot.notes || null;
+  if (bot.configMapName !== undefined) botDB.configmap_name = bot.configMapName || null;
+  if (bot.configPath !== undefined) botDB.config_path = bot.configPath || null;
   
   return botDB;
 }

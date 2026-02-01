@@ -100,6 +100,8 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     is_enabled: 1,
     is_selected: 0,
     notes: data.notes || null,
+    configmap_name: data.configMapName?.trim() || null,
+    config_path: data.configPath?.trim() || null,
     created_by: null,
     updated_by: null,
     created_at: now,
@@ -110,8 +112,8 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     INSERT INTO bots (
       id, name, api_url, ws_url, username, encrypted_password,
       access_token, token_expires_at, is_enabled, is_selected, notes,
-      created_by, updated_by, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      configmap_name, config_path, created_by, updated_by, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -126,6 +128,8 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     botDB.is_enabled,
     botDB.is_selected,
     botDB.notes,
+    botDB.configmap_name,
+    botDB.config_path,
     botDB.created_by,
     botDB.updated_by,
     botDB.created_at,
@@ -197,6 +201,14 @@ export async function updateBot(id: string, data: UpdateBotRequest): Promise<Bot
   if (data.notes !== undefined) {
     updates.push('notes = ?');
     values.push(data.notes || null);
+  }
+  if (data.configMapName !== undefined) {
+    updates.push('configmap_name = ?');
+    values.push(data.configMapName?.trim() || null);
+  }
+  if (data.configPath !== undefined) {
+    updates.push('config_path = ?');
+    values.push(data.configPath?.trim() || null);
   }
 
   if (updates.length === 0) {
