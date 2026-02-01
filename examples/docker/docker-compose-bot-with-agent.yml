@@ -1,0 +1,79 @@
+# FreqHub - Example: Freqtrade Bot with Config Agent (Sidecar)
+# Copyright (C) 2025 - 2026  FreqHub Contributors
+# License: GPL-3.0
+#
+# This example shows how to deploy a Freqtrade bot with a Config Agent sidecar.
+# The agent enables remote config management via the FreqHub Config Service.
+#
+# Usage:
+#   docker compose -f docker-compose-bot-with-agent.yml up -d
+#
+# The agent will be available at: http://localhost:3010
+# The bot API will be available at: http://localhost:8080
+
+name: freqtrade-with-agent
+
+services:
+  # Freqtrade Bot
+  freqtrade-bot:
+    image: freqtradeorg/freqtrade:stable
+    container_name: freqtrade-bot-1
+    volumes:
+      # Shared volume for config - both bot and agent access this
+      - bot-config:/freqtrade/user_data
+    ports:
+      - "8080:8080"
+    command: >
+      trade
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
+      --config /freqtrade/user_data/config.json
+      --strategy ${BOT_STRATEGY:-SampleStrategy}
+    networks:
+      - bot-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/api/v1/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Config Agent (Sidecar)
+  config-agent:
+    image: freqhub/config-agent:latest
+    build:
+      context: ../../
+      dockerfile: docker/Dockerfile.config-agent
+    container_name: freqtrade-bot-1-agent
+    volumes:
+      # Same shared volume - agent reads/writes config.json here
+      - bot-config:/freqtrade/user_data
+    ports:
+      - "3010:3010"
+    environment:
+      - PORT=3010
+      - CONFIG_PATH=/freqtrade/user_data/config.json
+      # Point to the bot's API (using container name)
+      - BOT_API_URL=http://freqtrade-bot:8080
+      - BOT_API_USERNAME=${BOT_USERNAME:-freqtrader}
+      - BOT_API_PASSWORD=${BOT_PASSWORD:-SuperSecret1!}
+      # API key for securing the agent
+      - API_KEY=${AGENT_API_KEY:-change-this-agent-api-key-min-32-chars}
+      - BACKUP_ENABLED=true
+      - BACKUP_COUNT=5
+      - LOG_LEVEL=info
+    networks:
+      - bot-network
+    restart: unless-stopped
+    depends_on:
+      freqtrade-bot:
+        condition: service_healthy
+
+networks:
+  bot-network:
+    driver: bridge
+
+volumes:
+  bot-config:
+    driver: local
