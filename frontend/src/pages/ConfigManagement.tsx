@@ -17,7 +17,6 @@ import {
   RotateCcw,
   History,
   GitCompare,
-  Play,
   AlertTriangle,
   CheckCircle2,
   XCircle,
@@ -38,6 +37,7 @@ import { useAuth } from '../contexts/AuthContext.js';
 import Editor from '@monaco-editor/react';
 
 type ConfigMode = 'local' | 'service';
+type LocalBotConfig = BotConfig & { agentUrl?: string };
 
 export function ConfigManagement() {
   const { user } = useAuth();
@@ -50,7 +50,7 @@ export function ConfigManagement() {
   const [botSearch, setBotSearch] = useState('');
   const lastAutoLoadedRef = useRef<string | null>(null);
   const [botConfig, setBotConfig] = useState<BotConfig | null>(null);
-  const [localConfig, setLocalConfig] = useState<BotConfig | null>(null);
+  const [localConfig, setLocalConfig] = useState<LocalBotConfig | null>(null);
   const [editorContent, setEditorContent] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
   const [versions, setVersions] = useState<ConfigVersion[]>([]);
@@ -81,8 +81,7 @@ export function ConfigManagement() {
     if (!agentUrl || !selectedBotId) return [];
     return bots.filter((bot) => {
       if (bot.id === selectedBotId) return false;
-      const storedUrl = localStorage.getItem(`config_agent_url_${bot.id}`) || '';
-      return storedUrl && storedUrl === agentUrl;
+      return bot.agentUrl && bot.agentUrl === agentUrl;
     });
   }, [agentUrl, bots, selectedBotId]);
   const hasAgentUrlConflict = agentUrlConflicts.length > 0;
@@ -188,12 +187,6 @@ export function ConfigManagement() {
         const content = JSON.stringify(config.currentConfig, null, 2);
         setEditorContent(content);
         setOriginalContent(content);
-        const resolvedAgentUrl = config.agentUrl || '';
-        setAgentUrl(resolvedAgentUrl);
-        if (resolvedAgentUrl) {
-          localStorage.setItem(`config_agent_url_${botId}`, resolvedAgentUrl);
-        }
-        
         // Load versions
         const vers = await configServiceApi.getVersions(botId);
         setVersions(vers);
@@ -293,8 +286,8 @@ export function ConfigManagement() {
     setSelectedVersion(null);
     setShowVersions(false);
     setShowDiff(false);
-    const storedAgentUrl = localStorage.getItem(`config_agent_url_${botId}`) || '';
-    setAgentUrl(storedAgentUrl);
+    const selectedBot = bots.find((bot) => bot.id === botId);
+    setAgentUrl(selectedBot?.agentUrl || '');
     setLocalConfig(null);
     if (!isLocalMode) {
       loadBotConfig(botId);
@@ -595,11 +588,11 @@ export function ConfigManagement() {
       setOriginalContent('');
       setVersions([]);
       setDiffs([]);
-      const storedAgentUrl = localStorage.getItem(`config_agent_url_${selectedBotId}`) || '';
-      setAgentUrl(storedAgentUrl);
+      const selectedBot = bots.find((bot) => bot.id === selectedBotId);
+      setAgentUrl(selectedBot?.agentUrl || '');
     }
     loadBotState(selectedBotId);
-  }, [isLocalMode, loadBotConfig, loadBotState, selectedBotId]);
+  }, [bots, isLocalMode, loadBotConfig, loadBotState, selectedBotId]);
 
   return (
     <div className="min-h-screen bg-background dark">
@@ -708,16 +701,15 @@ export function ConfigManagement() {
                       <input
                         type="text"
                         value={agentUrl}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setAgentUrl(value);
-                        if (selectedBotId) {
-                          localStorage.setItem(`config_agent_url_${selectedBotId}`, value);
-                        }
-                      }}
                         placeholder="http://agent:3010"
                         className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
+                        disabled
                       />
+                      {selectedBotId && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Edit in <Link to={`/bots?edit=${selectedBotId}`} className="text-blue-500 hover:underline">Bot Management</Link>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button

@@ -25,6 +25,7 @@ export interface BotDB {
   name: string;
   api_url: string;
   ws_url: string | null;
+  agent_url?: string | null;
   username: string;
   encrypted_password: string;
   access_token: string | null;
@@ -46,6 +47,7 @@ export const createBotsTable = `
     name TEXT NOT NULL,
     api_url TEXT NOT NULL,
     ws_url TEXT,
+    agent_url TEXT,
     username TEXT NOT NULL,
     encrypted_password TEXT NOT NULL,
     access_token TEXT,

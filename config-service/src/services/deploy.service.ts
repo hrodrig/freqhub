@@ -174,7 +174,7 @@ export async function deployConfig(botId: string, request: DeployRequest, userId
   try {
     // Check for agent URL
     const agentUrls = getAgentUrls();
-    const agentUrl = botConfig.agentUrl || agentUrls.get(botId);
+    const agentUrl = agentUrls.get(botId);
 
     let deployResult: { success: boolean; response?: Record<string, unknown>; error?: string };
 

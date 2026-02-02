@@ -24,6 +24,7 @@ export interface Bot {
   name: string;
   apiUrl: string;
   wsUrl: string | null;
+  agentUrl?: string | null;
   username: string;
   notes?: string;
   isEnabled: boolean;
@@ -41,6 +42,7 @@ export interface CreateBotRequest {
   name: string;
   apiUrl: string;
   wsUrl?: string;
+  agentUrl?: string;
   username: string;
   password: string;
   notes?: string;
@@ -55,6 +57,7 @@ export interface UpdateBotRequest {
   name?: string;
   apiUrl?: string;
   wsUrl?: string;
+  agentUrl?: string;
   username?: string;
   password?: string;
   notes?: string;
@@ -62,5 +65,20 @@ export interface UpdateBotRequest {
   isSelected?: boolean;
   configMapName?: string;
   configPath?: string;
+}
+
+export interface BotImportError {
+  row: number;
+  message: string;
+  identifier?: string;
+}
+
+export interface BotImportResult {
+  total: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  errors: BotImportError[];
 }
 

@@ -41,13 +41,11 @@ const createConfigSchema = z.object({
   botId: z.string().uuid(),
   botName: z.string().min(1),
   config: z.record(z.unknown()),
-  agentUrl: z.string().url().optional(),
 });
 
 const updateConfigSchema = z.object({
   config: z.record(z.unknown()).optional(),
   botName: z.string().min(1).optional(),
-  agentUrl: z.string().url().optional().nullable(),
   applyImmediately: z.boolean().optional(),
 });
 
@@ -126,7 +124,6 @@ router.post('/', async (req: AuthRequest, res: Response) => {
         botId: validated.botId,
         botName: validated.botName,
         config: validated.config as Parameters<typeof configService.createConfig>[0]['config'],
-        agentUrl: validated.agentUrl,
       },
       req.userId
     );
@@ -159,7 +156,6 @@ router.put('/:botId', async (req: AuthRequest<BotIdParams>, res: Response) => {
       {
         config: validated.config as Parameters<typeof configService.updateConfig>[1]['config'],
         botName: validated.botName,
-        agentUrl: validated.agentUrl ?? undefined,
         applyImmediately: validated.applyImmediately,
       },
       req.userId

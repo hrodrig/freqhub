@@ -36,10 +36,12 @@
     "http-proxy-middleware": "^3.0.3",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.0.2",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -48,6 +50,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/ioredis": "^4.28.10",
+    "@types/multer": "^2.0.0",
     "@types/node": "^22.10.5",
     "@types/socket.io": "^3.0.1",
     "@types/socket.io-client": "^1.4.36",

@@ -9,7 +9,7 @@
  */
 
 import axios, { type AxiosInstance } from 'axios';
-import { config } from '../../config/env.js';
+import { config as appConfig } from '../../config/env.js';
 
 /**
  * Config Service API client
@@ -39,7 +39,6 @@ export interface BotConfig {
   currentVersion: number;
   draftConfig?: FreqtradeConfig;
   hasPendingChanges: boolean;
-  agentUrl?: string;
   lastDeployedAt?: string;
   lastDeployedBy?: string;
   lastSyncedAt?: string;
@@ -91,7 +90,7 @@ export interface ApiResponse<T = unknown> {
 // Create config service client
 function createConfigServiceClient(): AxiosInstance {
   // Config service URL - defaults to same host, port 3005
-  const configServiceUrl = config.configServiceUrl;
+  const configServiceUrl = appConfig.configServiceUrl;
 
   const client = axios.create({
     baseURL: `${configServiceUrl}/api`,
@@ -102,18 +101,18 @@ function createConfigServiceClient(): AxiosInstance {
   });
 
   // Add API key from env or localStorage
-  client.interceptors.request.use((config) => {
-    const apiKey = config.configServiceApiKey ||
+  client.interceptors.request.use((request) => {
+    const apiKey = appConfig.configServiceApiKey ||
       localStorage.getItem('config_service_api_key');
     if (apiKey) {
-      config.headers['x-api-key'] = apiKey;
+      request.headers['x-api-key'] = apiKey;
     }
     // Forward user ID if available
     const userId = localStorage.getItem('user_id');
     if (userId) {
-      config.headers['x-user-id'] = userId;
+      request.headers['x-user-id'] = userId;
     }
-    return config;
+    return request;
   });
 
   return client;
@@ -125,7 +124,7 @@ const configClient = createConfigServiceClient();
 export const configServiceApi = {
   // Health check
   async health(): Promise<{ status: string; service: string }> {
-    const response = await axios.get(`${config.configServiceUrl}/health`);
+    const response = await axios.get(`${appConfig.configServiceUrl}/health`);
     return response.data;
   },
 
@@ -152,7 +151,6 @@ export const configServiceApi = {
     botId: string;
     botName: string;
     config: FreqtradeConfig;
-    agentUrl?: string;
   }): Promise<BotConfig> {
     const response = await configClient.post<ApiResponse<BotConfig>>('/configs', data);
     if (response.data.status === 'error') {
@@ -166,7 +164,6 @@ export const configServiceApi = {
     data: {
       config?: Partial<FreqtradeConfig>;
       botName?: string;
-      agentUrl?: string;
       applyImmediately?: boolean;
     }
   ): Promise<BotConfig> {

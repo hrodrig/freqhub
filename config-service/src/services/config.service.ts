@@ -15,6 +15,11 @@ import { logger } from '../utils/logger.js';
 import type { BotConfig, CreateBotConfigRequest, UpdateBotConfigRequest } from '../types/models.js';
 import type { FreqtradeConfig } from '../types/freqtrade.js';
 
+function stripAgentUrl(config: BotConfig): BotConfig {
+  const { agentUrl: _agentUrl, ...rest } = config as BotConfig & { agentUrl?: string };
+  return rest;
+}
+
 /**
  * Get all bot configs
  */
@@ -23,14 +28,14 @@ export async function getAllConfigs(redact = true): Promise<BotConfig[]> {
   const configs = await collection.find({}).sort({ botName: 1 }).toArray();
 
   if (redact) {
-    return configs.map((c) => ({
+    return configs.map((c) => stripAgentUrl({
       ...c,
       currentConfig: redactConfig(c.currentConfig),
       draftConfig: c.draftConfig ? redactConfig(c.draftConfig) : undefined,
     }));
   }
 
-  return configs;
+  return configs.map(stripAgentUrl);
 }
 
 /**
@@ -43,14 +48,14 @@ export async function getConfigByBotId(botId: string, redact = true): Promise<Bo
   if (!config) return null;
 
   if (redact) {
-    return {
+    return stripAgentUrl({
       ...config,
       currentConfig: redactConfig(config.currentConfig),
       draftConfig: config.draftConfig ? redactConfig(config.draftConfig) : undefined,
-    };
+    });
   }
 
-  return config;
+  return stripAgentUrl(config);
 }
 
 /**
@@ -74,7 +79,6 @@ export async function createConfig(request: CreateBotConfigRequest, userId?: str
     currentConfig: encryptedConfig,
     currentVersion: 1,
     hasPendingChanges: false,
-    agentUrl: request.agentUrl,
     createdAt: now,
     updatedAt: now,
   };
@@ -91,7 +95,7 @@ export async function createConfig(request: CreateBotConfigRequest, userId?: str
   logger.info(`Created config for bot ${request.botId} (${request.botName})`);
 
   return {
-    ...botConfig,
+    ...stripAgentUrl(botConfig),
     currentConfig: redactConfig(botConfig.currentConfig),
   };
 }
@@ -116,10 +120,6 @@ export async function updateConfig(
 
   if (request.botName) {
     updates.botName = request.botName;
-  }
-
-  if (request.agentUrl !== undefined) {
-    updates.agentUrl = request.agentUrl || undefined;
   }
 
   if (request.config) {

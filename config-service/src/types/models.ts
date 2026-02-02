@@ -27,9 +27,6 @@ export interface BotConfig {
   draftConfig?: FreqtradeConfig;
   hasPendingChanges: boolean;
 
-  // Agent URL for direct deploy (optional)
-  agentUrl?: string;
-
   // Metadata
   lastDeployedAt?: Date;
   lastDeployedBy?: string; // userId
@@ -90,7 +87,6 @@ export interface CreateBotConfigRequest {
   botId: string;
   botName: string;
   config: FreqtradeConfig;
-  agentUrl?: string;
 }
 
 /**
@@ -99,7 +95,6 @@ export interface CreateBotConfigRequest {
 export interface UpdateBotConfigRequest {
   config?: Partial<FreqtradeConfig>;
   botName?: string;
-  agentUrl?: string;
   applyImmediately?: boolean; // If true, skip draft and apply directly
 }
 

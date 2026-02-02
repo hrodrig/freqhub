@@ -73,7 +73,6 @@ router.post('/:botId/pull', async (req: AuthRequest<BotIdParams>, res: Response)
             currentVersion: existing.currentVersion + 1,
             lastSyncedAt: now,
             updatedAt: now,
-            agentUrl,
           },
         }
       );
@@ -87,7 +86,6 @@ router.post('/:botId/pull', async (req: AuthRequest<BotIdParams>, res: Response)
         currentConfig: encryptedConfig,
         currentVersion: 1,
         hasPendingChanges: false,
-        agentUrl,
         lastSyncedAt: now,
         createdAt: now,
         updatedAt: now,
@@ -178,7 +176,6 @@ router.post('/:botId/push', async (req: AuthRequest<BotIdParams>, res: Response)
         $set: {
           lastDeployedAt: new Date(),
           lastDeployedBy: req.userId,
-          agentUrl,
         },
       }
     );
@@ -212,22 +209,9 @@ router.get('/:botId/agent-health', async (req: Request<BotIdParams>, res: Respon
     const agentUrl = req.query.agentUrl as string | undefined;
 
     if (!agentUrl) {
-      // Try to get from stored config
-      const collection = getBotConfigsCollection();
-      const botConfig = await collection.findOne({ botId });
-
-      if (!botConfig?.agentUrl) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'agentUrl required (not stored for this bot)',
-        });
-      }
-
-      const health = await agentService.checkAgentHealth(botConfig.agentUrl);
-      return res.json({
-        status: health ? 'success' : 'error',
-        data: health,
-        agentUrl: botConfig.agentUrl,
+      return res.status(400).json({
+        status: 'error',
+        message: 'agentUrl required',
       });
     }
 
@@ -255,21 +239,9 @@ router.get('/:botId/backups', async (req: Request<BotIdParams>, res: Response) =
     const agentUrl = req.query.agentUrl as string | undefined;
 
     if (!agentUrl) {
-      const collection = getBotConfigsCollection();
-      const botConfig = await collection.findOne({ botId });
-
-      if (!botConfig?.agentUrl) {
-        return res.status(400).json({
-          status: 'error',
-          message: 'agentUrl required',
-        });
-      }
-
-      const result = await agentService.listAgentBackups(botConfig.agentUrl);
-      return res.json({
-        status: result.success ? 'success' : 'error',
-        data: result.backups,
-        error: result.error,
+      return res.status(400).json({
+        status: 'error',
+        message: 'agentUrl required',
       });
     }
 

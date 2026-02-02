@@ -248,6 +248,10 @@ cmd_build() {
     cd backend && npm run build
     echo -e "${BLUE}Building frontend...${NC}"
     cd ../frontend && npm run build
+    echo -e "${BLUE}Building config-agent...${NC}"
+    cd ../config-agent && npm run build
+    echo -e "${BLUE}Building config-service...${NC}"
+    cd ../config-service && npm run build
     echo -e "${GREEN}✓ Build complete!${NC}"
 }
 

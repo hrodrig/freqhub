@@ -26,7 +26,23 @@ import { proxyRequest } from './proxyService.js';
 import { cacheStatsService } from './cacheStats.service.js';
 import { eventBusService } from './eventBus.service.js';
 import { appLogger } from '../utils/logger.js';
-import { assertBotApiUrlAllowed, validateBotWsUrl } from '../utils/urlSecurity.js';
+import { assertBotApiUrlAllowed, validateBotApiUrl, validateBotWsUrl } from '../utils/urlSecurity.js';
+import * as XLSX from 'xlsx';
+
+export interface BotImportError {
+  row: number;
+  message: string;
+  identifier?: string;
+}
+
+export interface BotImportResult {
+  total: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  errors: BotImportError[];
+}
 
 /**
  * Get all bots
@@ -57,6 +73,18 @@ export function getBotById(id: string): Bot | null {
     appLogger.error(`Error getting bot by ID ${id}:`, error);
     throw error;
   }
+}
+
+export function getBotByApiUrl(apiUrl: string): Bot | null {
+  const db = getDatabase();
+  const bot = db.prepare('SELECT * FROM bots WHERE api_url = ?').get(apiUrl) as BotDB | undefined;
+  return bot ? botDBToBot(bot) : null;
+}
+
+export function getBotByName(name: string): Bot | null {
+  const db = getDatabase();
+  const bot = db.prepare('SELECT * FROM bots WHERE name = ?').get(name) as BotDB | undefined;
+  return bot ? botDBToBot(bot) : null;
 }
 
 /**
@@ -93,6 +121,7 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     name: data.name,
     api_url: data.apiUrl,
     ws_url: data.wsUrl || null,
+    agent_url: data.agentUrl?.trim() || null,
     username: data.username,
     encrypted_password: encryptedPassword,
     access_token: null,
@@ -110,10 +139,10 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
 
   const stmt = db.prepare(`
     INSERT INTO bots (
-      id, name, api_url, ws_url, username, encrypted_password,
+      id, name, api_url, ws_url, agent_url, username, encrypted_password,
       access_token, token_expires_at, is_enabled, is_selected, notes,
       configmap_name, config_path, created_by, updated_by, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.run(
@@ -121,6 +150,7 @@ export async function createBot(data: CreateBotRequest): Promise<Bot> {
     botDB.name,
     botDB.api_url,
     botDB.ws_url,
+    botDB.agent_url,
     botDB.username,
     botDB.encrypted_password,
     botDB.access_token,
@@ -181,6 +211,10 @@ export async function updateBot(id: string, data: UpdateBotRequest): Promise<Bot
     updates.push('ws_url = ?');
     values.push(data.wsUrl);
   }
+  if (data.agentUrl !== undefined) {
+    updates.push('agent_url = ?');
+    values.push(data.agentUrl?.trim() || null);
+  }
   if (data.username !== undefined) {
     updates.push('username = ?');
     values.push(data.username);
@@ -238,6 +272,239 @@ export async function updateBot(id: string, data: UpdateBotRequest): Promise<Bot
   }
 
   return bot;
+}
+
+const importHeaderAliases: Record<string, keyof ImportRow> = {
+  name: 'name',
+  apiurl: 'apiUrl',
+  api_url: 'apiUrl',
+  wsurl: 'wsUrl',
+  ws_url: 'wsUrl',
+  agenturl: 'agentUrl',
+  agent_url: 'agentUrl',
+  username: 'username',
+  password: 'password',
+  notes: 'notes',
+  configmapname: 'configMapName',
+  config_map_name: 'configMapName',
+  configpath: 'configPath',
+  config_path: 'configPath',
+  isenabled: 'isEnabled',
+  is_enabled: 'isEnabled',
+};
+
+interface ImportRow {
+  name?: string;
+  apiUrl?: string;
+  wsUrl?: string;
+  agentUrl?: string;
+  username?: string;
+  password?: string;
+  notes?: string;
+  configMapName?: string;
+  configPath?: string;
+  isEnabled?: boolean;
+  isEnabledInvalid?: boolean;
+}
+
+type ImportRowStringKey = Exclude<keyof ImportRow, 'isEnabled' | 'isEnabledInvalid'>;
+
+function normalizeHeader(value: unknown): string {
+  return String(value ?? '').trim().toLowerCase().replace(/\s+/g, '').replace(/-/g, '_');
+}
+
+function toOptionalString(value: unknown): string | undefined {
+  const normalized = String(value ?? '').trim();
+  return normalized ? normalized : undefined;
+}
+
+function parseBooleanStrict(value: unknown): { value?: boolean; invalid: boolean } {
+  if (value === undefined || value === null || value === '') {
+    return { value: undefined, invalid: false };
+  }
+  if (typeof value === 'boolean') return { value, invalid: false };
+  if (typeof value === 'number') return { value: value !== 0, invalid: false };
+  const normalized = String(value).trim().toLowerCase();
+  if (['true'].includes(normalized)) return { value: true, invalid: false };
+  if (['false'].includes(normalized)) return { value: false, invalid: false };
+  return { value: undefined, invalid: true };
+}
+
+function parseXlsxRows(buffer: Buffer): ImportRow[] {
+  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) {
+    return [];
+  }
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+  if (rows.length === 0) {
+    return [];
+  }
+  const headerRow = rows[0];
+  const mappedRows: ImportRow[] = [];
+
+  rows.slice(1).forEach((row) => {
+    const rowData: ImportRow = {};
+    row.forEach((cell, index) => {
+      const headerKey = importHeaderAliases[normalizeHeader(headerRow[index])];
+      if (!headerKey) return;
+      if (headerKey === 'isEnabled') {
+        const parsed = parseBooleanStrict(cell);
+        if (parsed.value !== undefined) {
+          rowData.isEnabled = parsed.value;
+        }
+        if (parsed.invalid) {
+          rowData.isEnabledInvalid = true;
+        }
+        return;
+      }
+      const value = toOptionalString(cell);
+      if (value !== undefined) {
+        rowData[headerKey as ImportRowStringKey] = value;
+      }
+    });
+    if (Object.keys(rowData).length > 0) {
+      mappedRows.push(rowData);
+    }
+  });
+
+  return mappedRows;
+}
+
+function validateImportRow(row: ImportRow): string | null {
+  if (!row.name) return 'Name is required';
+  if (!row.username) return 'Username is required';
+  const hasConfigMap = Boolean(row.configMapName?.trim());
+  const hasConfigPath = Boolean(row.configPath?.trim());
+  if (hasConfigMap && hasConfigPath) {
+    return 'Provide either configMapName or configPath, not both';
+  }
+  if (row.apiUrl) {
+    const urlValidation = validateBotApiUrl(row.apiUrl);
+    if (!urlValidation.ok) {
+      return urlValidation.reason || 'API URL is not allowed (security policy)';
+    }
+  }
+  if (row.wsUrl) {
+    const wsValidation = validateBotWsUrl(row.wsUrl);
+    if (!wsValidation.ok) {
+      return wsValidation.reason || 'WebSocket URL is not allowed (security policy)';
+    }
+  }
+  if (row.agentUrl) {
+    try {
+      new URL(row.agentUrl);
+    } catch {
+      return 'Invalid Agent URL';
+    }
+  }
+  if (row.isEnabledInvalid) {
+    return 'isEnabled must be True or False';
+  }
+  return null;
+}
+
+export async function importBotsFromXlsx(
+  buffer: Buffer,
+  options: { role: string; ownedBotIds?: string[] }
+): Promise<BotImportResult> {
+  const rows = parseXlsxRows(buffer);
+  const result: BotImportResult = {
+    total: rows.length,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const rowNumber = index + 2;
+    const row = rows[index];
+    const identifier = row.apiUrl || row.name;
+    const validationError = validateImportRow(row);
+    if (validationError) {
+      result.failed += 1;
+      result.errors.push({ row: rowNumber, message: validationError, identifier });
+      continue;
+    }
+
+    let existing = row.apiUrl ? getBotByApiUrl(row.apiUrl) : null;
+    if (!existing && row.name) {
+      existing = getBotByName(row.name);
+    }
+
+    if (existing) {
+      if (options.role !== 'superadmin' && options.ownedBotIds && !options.ownedBotIds.includes(existing.id)) {
+        result.failed += 1;
+        result.errors.push({
+          row: rowNumber,
+          message: 'You do not have access to update this bot',
+          identifier: existing.name,
+        });
+        continue;
+      }
+
+      const updatePayload: UpdateBotRequest = {
+        name: row.name,
+        username: row.username,
+      };
+
+      if (row.apiUrl) updatePayload.apiUrl = row.apiUrl;
+      if (row.wsUrl !== undefined) updatePayload.wsUrl = row.wsUrl;
+      if (row.agentUrl !== undefined) updatePayload.agentUrl = row.agentUrl;
+      if (row.notes !== undefined) updatePayload.notes = row.notes;
+      if (row.configMapName !== undefined) updatePayload.configMapName = row.configMapName;
+      if (row.configPath !== undefined) updatePayload.configPath = row.configPath;
+      if (row.isEnabled !== undefined) updatePayload.isEnabled = row.isEnabled;
+      if (row.password) updatePayload.password = row.password;
+
+      await updateBot(existing.id, updatePayload);
+      result.updated += 1;
+      continue;
+    }
+
+    if (!row.apiUrl) {
+      result.failed += 1;
+      result.errors.push({
+        row: rowNumber,
+        message: 'API URL is required to create a new bot',
+        identifier,
+      });
+      continue;
+    }
+    if (!row.password) {
+      result.failed += 1;
+      result.errors.push({
+        row: rowNumber,
+        message: 'Password is required to create a new bot',
+        identifier,
+      });
+      continue;
+    }
+
+    assertBotApiUrlAllowed(row.apiUrl);
+    const created = await createBot({
+      name: row.name!,
+      apiUrl: row.apiUrl,
+      wsUrl: row.wsUrl,
+      agentUrl: row.agentUrl,
+      username: row.username!,
+      password: row.password,
+      notes: row.notes,
+      configMapName: row.configMapName,
+      configPath: row.configPath,
+    });
+
+    if (row.isEnabled === false) {
+      await updateBot(created.id, { isEnabled: false });
+    }
+
+    result.created += 1;
+  }
+
+  return result;
 }
 
 /**

@@ -75,7 +75,7 @@ export const configAgentApi = {
         configExists: boolean;
         botReachable: boolean;
       }>>('/health');
-      return response.data.data || response.data || null;
+      return response.data.data || null;
     } catch {
       return null;
     }
