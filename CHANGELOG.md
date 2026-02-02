@@ -25,6 +25,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.22] - 2026-02-01
+
+### Added
+- Bot agent URL support across backend and frontend
+- XLSX bot import/export endpoints with downloadable template
+- `freqhub build` now includes config-agent and config-service
+
+### Changed
+- Bot management UI now uses a searchable, sortable table with pagination
+- Config Service derives agent URLs from bot settings instead of storing them
+
+### Fixed
+- Notes are editable again in Bot Management
+- Edit/delete flow now allows override when bot state cannot be verified
+
 ## [0.2.11] - 2026-01-24
 
 ### Added
@@ -249,7 +264,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic polling service
 - Rate limiting for API protection
 
-[Unreleased]: https://github.com/hrodrig/freqhub/compare/v0.2.8...HEAD
+[Unreleased]: https://github.com/hrodrig/freqhub/compare/v0.2.22...HEAD
+[0.2.22]: https://github.com/hrodrig/freqhub/compare/v0.2.11...v0.2.22
 [0.2.8]: https://github.com/hrodrig/freqhub/compare/v0.2.4...v0.2.8
 [0.2.4]: https://github.com/hrodrig/freqhub/compare/v0.2.0...v0.2.4
 [0.2.0]: https://github.com/hrodrig/freqhub/compare/v0.1.0...v0.2.0

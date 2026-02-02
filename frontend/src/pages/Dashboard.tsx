@@ -18,13 +18,14 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useBotStore } from '../stores/botStore.js';
-import { proxyApi } from '../services/api/endpoints.js';
+import { botApi, proxyApi } from '../services/api/endpoints.js';
 import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
 import { appLogger } from '../utils/logger.js';
 import { Link } from 'react-router-dom';
 import { Bot, Activity, CheckCircle2, XCircle, Loader2, Calendar, Play, Square, Pause, RefreshCw, Settings } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 import { SparklineChart } from '../components/SparklineChart';
+import { useAuth } from '../contexts/AuthContext.js';
 
 type TimePeriod = '24h' | '7d' | '30d' | 'all';
 type TradingMode = 'live' | 'dry_run';
@@ -50,6 +51,7 @@ interface BotStatus {
 }
 
 export function Dashboard() {
+  const { user } = useAuth();
   const { bots, isLoading, error, fetchBots } = useBotStore();
   const [botStatuses, setBotStatuses] = useState<BotStatus[]>([]);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
@@ -305,6 +307,36 @@ export function Dashboard() {
     } catch (err) {
       appLogger.error(`Failed to ${action} bot ${botId}:`, err);
       const errorMessage = err instanceof Error ? err.message : `Failed to ${action} bot`;
+      alert(`❌ ${errorMessage}`);
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [botId]: null }));
+    }
+  };
+
+  const handleRunmodeChange = async (botId: string, botName: string, targetRunmode: 'dry_run' | 'live') => {
+    const status = botStatuses.find((s) => s.botId === botId);
+    const openTradesCount = status?.status?.open_trades?.length ?? 0;
+    const isLive = targetRunmode === 'live';
+    const openTradesWarning = openTradesCount > 0
+      ? `\n\n⚠️ Open trades detected: ${openTradesCount}\nChanging runmode will NOT close positions.`
+      : '';
+    const confirmation = isLive
+      ? `Move "${botName}" to LIVE trading?\n\nThis will execute real trades. Make sure API keys and balances are correct.\n\nThe bot must be stopped before switching to live.${openTradesWarning}`
+      : `Move "${botName}" to DRY RUN?\n\nThis will disable real trading for this bot.${openTradesWarning}`;
+
+    if (!confirm(confirmation)) {
+      return;
+    }
+
+    setActionLoading((prev) => ({ ...prev, [botId]: 'runmode' }));
+    try {
+      await botApi.setRunmode(botId, targetRunmode);
+      setTimeout(() => {
+        loadBotStatuses(botId);
+      }, 1500);
+    } catch (err) {
+      appLogger.error(`Failed to change runmode for bot ${botId}:`, err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to change runmode';
       alert(`❌ ${errorMessage}`);
     } finally {
       setActionLoading((prev) => ({ ...prev, [botId]: null }));
@@ -759,6 +791,7 @@ export function Dashboard() {
                       const connectivity = status ? getConnectivityStatus(status) : null;
                       const ConnectivityIcon = connectivity?.icon || XCircle;
                       const stateDisplay = status ? getBotStateDisplay(status) : null;
+                      const currentRunmode = status?.status?.runmode;
 
                       return (
                         <tr
@@ -772,6 +805,11 @@ export function Dashboard() {
                             >
                               {bot.name}
                             </Link>
+                            {bot.configMapName && (
+                              <div className="text-xs text-muted-foreground font-mono mt-1">
+                                {bot.configMapName}
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
@@ -899,6 +937,32 @@ export function Dashboard() {
                                   <Pause className="h-3 w-3" />
                                 )}
                               </button>
+                              {user?.role !== 'auditor' && currentRunmode && (
+                                <button
+                                  onClick={() =>
+                                    handleRunmodeChange(
+                                      bot.id,
+                                      bot.name,
+                                      currentRunmode === 'dry_run' ? 'live' : 'dry_run'
+                                    )
+                                  }
+                                  disabled={!!actionLoading[bot.id] || !status?.isOnline || !bot.configPath?.trim()}
+                                  className="p-1.5 text-blue-500 hover:bg-blue-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title={
+                                    !bot.configPath?.trim()
+                                      ? 'Set Config Path to enable runmode changes'
+                                      : currentRunmode === 'dry_run'
+                                        ? 'Move to Live'
+                                        : 'Move to Dry Run'
+                                  }
+                                >
+                                  {actionLoading[bot.id] === 'runmode' ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="h-3 w-3" />
+                                  )}
+                                </button>
+                              )}
                               <Link
                                 to={`/bots/${bot.id}`}
                                 className="p-1.5 text-muted-foreground hover:bg-muted rounded transition-colors"

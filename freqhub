@@ -81,6 +81,12 @@ show_help() {
     echo -e "  ${GREEN}db-seed${NC}           Seed database with sample data"
     echo -e "  ${GREEN}db-example${NC}        Create example database"
     echo ""
+    echo -e "${BLUE}Config Service & Agent${NC}"
+    echo -e "  ${GREEN}dev-config${NC}        Start config-service development server"
+    echo -e "  ${GREEN}dev-agent${NC}         Start config-agent development server"
+    echo -e "  ${GREEN}build-config${NC}      Build config-service"
+    echo -e "  ${GREEN}build-agent${NC}       Build config-agent"
+    echo ""
     echo -e "${BLUE}Docker${NC}"
     echo -e "  ${GREEN}docker-up${NC}         Start all services with Docker Compose"
     echo -e "  ${GREEN}docker-down${NC}       Stop all Docker services"
@@ -88,6 +94,7 @@ show_help() {
     echo -e "  ${GREEN}docker-logs${NC}       Show Docker logs"
     echo -e "  ${GREEN}docker-restart${NC}    Restart Docker services"
     echo -e "  ${GREEN}docker-clean${NC}      Stop and remove all containers, networks, and volumes"
+    echo -e "  ${GREEN}logs-config${NC}       Show config-service logs (if running in Docker)"
     echo ""
     echo -e "${BLUE}Cleanup${NC}"
     echo -e "  ${GREEN}clean${NC}             Remove build artifacts and node_modules"
@@ -114,6 +121,10 @@ cmd_install() {
         echo -e "${BLUE}Initializing Tailwind CSS...${NC}"
         npx tailwindcss init -p || echo -e "${YELLOW}⚠ Tailwind init skipped (may already exist)${NC}"
     fi
+    echo -e "${BLUE}Installing config-service dependencies...${NC}"
+    cd ../config-service && npm install 2>/dev/null || echo -e "${YELLOW}⚠ Config service not found (optional)${NC}"
+    echo -e "${BLUE}Installing config-agent dependencies...${NC}"
+    cd ../config-agent && npm install 2>/dev/null || echo -e "${YELLOW}⚠ Config agent not found (optional)${NC}"
     echo -e "${GREEN}✓ All dependencies installed${NC}"
 }
 
@@ -129,6 +140,14 @@ cmd_setup() {
     if [ ! -f frontend/.env ]; then
         cp frontend/env.example frontend/.env 2>/dev/null || echo -e "${YELLOW}⚠ No frontend/env.example found${NC}"
     fi
+    if [ ! -f config-service/.env ] && [ -f config-service/env.example ]; then
+        cp config-service/env.example config-service/.env && \
+        echo -e "${YELLOW}⚠ Created config-service/.env from env.example - please update with your values${NC}"
+    fi
+    if [ ! -f config-agent/.env ] && [ -f config-agent/env.example ]; then
+        cp config-agent/env.example config-agent/.env && \
+        echo -e "${YELLOW}⚠ Created config-agent/.env from env.example - please update with your values${NC}"
+    fi
     if [ ! -f backend/data/freqhub.db ]; then
         cp backend/data/freqhub.db.example backend/data/freqhub.db 2>/dev/null || \
         echo -e "${YELLOW}⚠ No example database found - database will be created on first run${NC}"
@@ -136,7 +155,8 @@ cmd_setup() {
     echo -e "${GREEN}✓ Setup complete!${NC}"
     echo -e "${YELLOW}Don't forget to:${NC}"
     echo "  1. Update backend/.env with your configuration"
-    echo "  2. Set ENCRYPTION_KEY to a secure value (min 32 characters)"
+    echo "  2. Update config-service/.env with your configuration"
+    echo "  3. Set ENCRYPTION_KEY to a secure value (min 32 characters)"
 }
 
 # Function: dev-bots
@@ -147,7 +167,7 @@ cmd_dev_bots() {
     echo -e "${YELLOW}  - Freqtrade Bot 1 on localhost:8080${NC}"
     echo -e "${YELLOW}  - Freqtrade Bot 2 on localhost:8081${NC}"
     echo -e "${YELLOW}  - Freqtrade Bot 3 on localhost:8082${NC}"
-    cd examples/docker && docker compose -f docker-compose-bots-valkey.yml up -d
+    cd examples/docker && COMPOSE_IGNORE_ORPHANS=true docker compose  -f docker-compose-bots-valkey.yml up -d
     echo -e "${GREEN}✓ Bots and Valkey started${NC}"
     echo -e "${YELLOW}To stop: ./freqhub dev-bots-stop${NC}"
 }
@@ -194,12 +214,44 @@ cmd_dev_frontend() {
     cd frontend && npm run dev
 }
 
+# Function: dev-config
+cmd_dev_config() {
+    echo -e "${BLUE}Starting config-service development server...${NC}"
+    echo -e "${YELLOW}⚠ Note: Make sure MongoDB is running first${NC}"
+    echo -e "${YELLOW}   You can start it with: docker run -d -p 27017:27017 mongo:7.0${NC}"
+    cd config-service && npm run dev
+}
+
+# Function: build-config
+cmd_build_config() {
+    echo -e "${BLUE}Building config-service...${NC}"
+    cd config-service && npm run build
+}
+
+# Function: dev-agent
+cmd_dev_agent() {
+    echo -e "${BLUE}Starting config-agent development server...${NC}"
+    echo -e "${YELLOW}⚠ Note: The agent needs access to a config.json file${NC}"
+    echo -e "${YELLOW}   Set CONFIG_PATH in config-agent/.env${NC}"
+    cd config-agent && npm run dev
+}
+
+# Function: build-agent
+cmd_build_agent() {
+    echo -e "${BLUE}Building config-agent...${NC}"
+    cd config-agent && npm run build
+}
+
 # Function: build
 cmd_build() {
     echo -e "${BLUE}Building backend...${NC}"
     cd backend && npm run build
     echo -e "${BLUE}Building frontend...${NC}"
     cd ../frontend && npm run build
+    echo -e "${BLUE}Building config-agent...${NC}"
+    cd ../config-agent && npm run build
+    echo -e "${BLUE}Building config-service...${NC}"
+    cd ../config-service && npm run build
     echo -e "${GREEN}✓ Build complete!${NC}"
 }
 
@@ -276,10 +328,11 @@ cmd_db_example() {
 # Function: docker-up
 cmd_docker_up() {
     echo -e "${BLUE}Starting Docker services...${NC}"
-    docker compose -f docker-compose.full.yml up -d
+    COMPOSE_IGNORE_ORPHANS=true docker compose -f docker-compose.full.yml up -d
     echo -e "${GREEN}✓ Services started${NC}"
     echo -e "${YELLOW}Backend: http://localhost:3001${NC}"
     echo -e "${YELLOW}Frontend: http://localhost:3000${NC}"
+    echo -e "${YELLOW}Config Service: http://localhost:3005${NC}"
 }
 
 # Function: docker-down
@@ -345,6 +398,12 @@ cmd_status() {
     else
         echo -e "  ${YELLOW}✗ Not running${NC}"
     fi
+    echo -e "${YELLOW}Config Service:${NC}"
+    if curl -s http://localhost:3005/health > /dev/null 2>&1; then
+        echo -e "  ${GREEN}✓ Running${NC}"
+    else
+        echo -e "  ${YELLOW}✗ Not running${NC}"
+    fi
 }
 
 # Function: logs-backend
@@ -355,6 +414,11 @@ cmd_logs_backend() {
 # Function: logs-frontend
 cmd_logs_frontend() {
     docker compose -f docker-compose.full.yml logs -f frontend
+}
+
+# Function: logs-config
+cmd_logs_config() {
+    docker compose -f docker-compose.full.yml logs -f config-service
 }
 
 # Main command dispatcher
@@ -378,6 +442,12 @@ main() {
         dev-frontend)
             cmd_dev_frontend
             ;;
+        dev-config)
+            cmd_dev_config
+            ;;
+        dev-agent)
+            cmd_dev_agent
+            ;;
         dev-bots)
             cmd_dev_bots
             ;;
@@ -395,6 +465,12 @@ main() {
             ;;
         build-frontend)
             cmd_build_frontend
+            ;;
+        build-config)
+            cmd_build_config
+            ;;
+        build-agent)
+            cmd_build_agent
             ;;
         lint)
             cmd_lint
@@ -455,6 +531,9 @@ main() {
             ;;
         logs-frontend)
             cmd_logs_frontend
+            ;;
+        logs-config)
+            cmd_logs_config
             ;;
         *)
             echo -e "${YELLOW}Unknown command: $1${NC}"

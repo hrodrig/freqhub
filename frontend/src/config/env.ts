@@ -29,5 +29,8 @@ export const config = {
   apiUrl: (import.meta.env.VITE_API_PROXY_TARGET && import.meta.env.VITE_API_PROXY_TARGET.trim() !== '') 
     ? import.meta.env.VITE_API_PROXY_TARGET 
     : (import.meta.env.PROD ? '' : 'http://localhost:3001'),
+  configServiceUrl: import.meta.env.VITE_CONFIG_SERVICE_URL ||
+    `${window.location.protocol}//${window.location.hostname}:3005`,
+  configServiceApiKey: (import.meta.env.VITE_CONFIG_SERVICE_API_KEY || '').trim(),
 };
 

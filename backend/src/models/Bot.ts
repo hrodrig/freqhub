@@ -26,10 +26,13 @@ export interface Bot {
   name: string;
   apiUrl: string;
   wsUrl: string | null;
+  agentUrl?: string | null;
   username: string;
   isEnabled: boolean;
   isSelected: boolean;
   notes?: string | null;
+  configMapName?: string | null;
+  configPath?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -41,9 +44,12 @@ export interface CreateBotRequest {
   name: string;
   apiUrl: string;
   wsUrl?: string;
+  agentUrl?: string;
   username: string;
   password: string;
   notes?: string;
+  configMapName?: string;
+  configPath?: string;
 }
 
 /**
@@ -53,11 +59,14 @@ export interface UpdateBotRequest {
   name?: string;
   apiUrl?: string;
   wsUrl?: string;
+  agentUrl?: string;
   username?: string;
   password?: string;
   isEnabled?: boolean;
   isSelected?: boolean;
   notes?: string;
+  configMapName?: string;
+  configPath?: string;
 }
 
 /**
@@ -69,11 +78,14 @@ export function botDBToBot(botDB: BotDB): Bot {
     name: botDB.name,
     apiUrl: botDB.api_url,
     wsUrl: botDB.ws_url,
+    agentUrl: 'agent_url' in botDB ? (botDB.agent_url || null) : null,
     username: botDB.username,
     isEnabled: botDB.is_enabled === 1,
     isSelected: botDB.is_selected === 1,
     // Handle notes field - it might not exist in older databases
     notes: 'notes' in botDB ? (botDB.notes || null) : null,
+    configMapName: 'configmap_name' in botDB ? (botDB.configmap_name || null) : null,
+    configPath: 'config_path' in botDB ? (botDB.config_path || null) : null,
     createdAt: botDB.created_at,
     updatedAt: botDB.updated_at,
   };
@@ -88,10 +100,13 @@ export function botToBotDB(bot: Partial<Bot>): Partial<BotDB> {
   if (bot.name !== undefined) botDB.name = bot.name;
   if (bot.apiUrl !== undefined) botDB.api_url = bot.apiUrl;
   if (bot.wsUrl !== undefined) botDB.ws_url = bot.wsUrl;
+  if (bot.agentUrl !== undefined) botDB.agent_url = bot.agentUrl || null;
   if (bot.username !== undefined) botDB.username = bot.username;
   if (bot.isEnabled !== undefined) botDB.is_enabled = bot.isEnabled ? 1 : 0;
   if (bot.isSelected !== undefined) botDB.is_selected = bot.isSelected ? 1 : 0;
   if (bot.notes !== undefined) botDB.notes = bot.notes || null;
+  if (bot.configMapName !== undefined) botDB.configmap_name = bot.configMapName || null;
+  if (bot.configPath !== undefined) botDB.config_path = bot.configPath || null;
   
   return botDB;
 }

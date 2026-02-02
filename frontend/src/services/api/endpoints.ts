@@ -17,7 +17,7 @@
  */
 
 import { apiClient } from './client.js';
-import type { Bot, CreateBotRequest, UpdateBotRequest } from '../../types/bot.js';
+import type { Bot, BotImportResult, CreateBotRequest, UpdateBotRequest } from '../../types/bot.js';
 
 /**
  * API endpoints for bots
@@ -70,6 +70,39 @@ export const botApi = {
       `/bots/${id}/test`
     );
     return response.data;
+  },
+
+  /**
+   * Update bot runmode (dry_run/live)
+   */
+  setRunmode: async (id: string, runmode: 'dry_run' | 'live'): Promise<{ runmode: string; previousRunmode: string | null }> => {
+    const response = await apiClient.post<{ status: string; data: { runmode: string; previousRunmode: string | null } }>(
+      `/bots/${id}/runmode`,
+      { runmode }
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Import bots from XLSX
+   */
+  importBots: async (file: File): Promise<BotImportResult> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post<{ status: string; data: BotImportResult }>(
+      '/bots/import',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data.data;
+  },
+
+  /**
+   * Export bots to XLSX
+   */
+  exportBots: async (): Promise<Blob> => {
+    const response = await apiClient.get('/bots/export', { responseType: 'blob' });
+    return response.data as Blob;
   },
 };
 

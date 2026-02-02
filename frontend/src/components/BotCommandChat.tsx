@@ -2700,7 +2700,7 @@ Statistics
         )}
         <div className="grid grid-cols-4 gap-2 mb-2">
           {COMMON_COMMANDS.slice(0, 8).map((cmd) => (
-            <div key={cmd.command} className="relative group">
+            <div key={cmd.command}>
               <button
                 onClick={() => handleCommandClick(cmd.command)}
                 disabled={isReadOnly || isLoading}
@@ -2708,16 +2708,12 @@ Statistics
               >
                 {cmd.command}
               </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs bg-gray-800 text-gray-100 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                {cmd.description}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-              </div>
             </div>
           ))}
         </div>
         <div className="grid grid-cols-4 gap-2">
           {COMMON_COMMANDS.slice(8).map((cmd) => (
-            <div key={cmd.command} className="relative group">
+            <div key={cmd.command}>
               <button
                 onClick={() => handleCommandClick(cmd.command)}
                 disabled={isReadOnly || isLoading}
@@ -2725,10 +2721,6 @@ Statistics
               >
                 {cmd.command}
               </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs bg-gray-800 text-gray-100 rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                {cmd.description}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-              </div>
             </div>
           ))}
         </div>

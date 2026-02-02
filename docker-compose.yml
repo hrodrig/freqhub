@@ -44,6 +44,9 @@ services:
       - DATABASE_PATH=/app/data/freqhub.db
     volumes:
       - ./backend/data:/app/data
+      - ./examples/docker/freqtrade-data-1:/freqtrade/configs/bot1
+      - ./examples/docker/freqtrade-data-2:/freqtrade/configs/bot2
+      - ./examples/docker/freqtrade-data-3:/freqtrade/configs/bot3
     restart: unless-stopped
 
   frontend:

@@ -62,6 +62,12 @@ const envSchema = z
   RATE_LIMIT_ENABLED: z.string().default('true').transform((val) => val === 'true'),
   RATE_LIMIT_DEFAULT: z.string().default('60').transform((val) => parseInt(val, 10)), // requests per window
   RATE_LIMIT_WINDOW: z.string().default('60').transform((val) => parseInt(val, 10)), // seconds
+  // Runmode editor (optional, for config.json editing + reload)
+  RUNMODE_EDITOR_ENABLED: z.string().default('false').transform((val) => val === 'true'),
+  RUNMODE_CONFIG_BASE_DIR: z
+    .string()
+    .optional()
+    .transform((val) => (val && val.trim().length > 0 ? val : undefined)),
 })
   .superRefine((val, ctx) => {
     if (val.NODE_ENV !== 'production') return;

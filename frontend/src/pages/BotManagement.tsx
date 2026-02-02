@@ -16,423 +16,127 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Edit, Trash2, TestTube, CheckCircle2, XCircle, Loader2, Play, Square, Pause, RotateCcw, Settings, RefreshCw, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef, useMemo, type ChangeEvent } from 'react';
+import { Plus, X, Edit, Trash2, CheckCircle2, XCircle, Loader2, Eye, EyeOff, Upload, Download } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { useBotStore } from '../stores/botStore.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
-import { websocketService, type FreqHubEvent } from '../services/websocket.service.js';
-import { appLogger } from '../utils/logger.js';
 import { useAuth } from '../contexts/AuthContext.js';
-import type { CreateBotRequest, UpdateBotRequest } from '../types/bot.js';
+import { config } from '../config/env.js';
+import type { BotImportResult, CreateBotRequest, UpdateBotRequest } from '../types/bot.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
-
-interface BotStatus {
-  botId: string;
-  status: {
-    state?: string; // RUNNING, STOPPED, PAUSED, etc.
-    runmode?: string; // dry_run or live
-    exchange?: string; // Exchange name
-    strategy?: string; // Strategy name
-    timeframe?: string; // Timeframe (e.g., 5m, 1h)
-    stoploss?: number; // Stoploss percentage
-    trade_count?: number;
-    profit_closed_coin?: number;
-    profit_closed_percent?: number;
-  } | null;
-  error?: string;
-  isOnline?: boolean; // Whether bot responds to ping
-}
 
 export function BotManagement() {
   const { user } = useAuth();
   const { bots, fetchBots, removeBot, updateBot: updateBotInStore } = useBotStore();
+  const location = useLocation();
+  const handledEditRef = useRef<string | null>(null);
+  const importFileRef = useRef<HTMLInputElement | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingBot, setEditingBot] = useState<string | null>(null);
   const [formData, setFormData] = useState<CreateBotRequest & { isEnabled: boolean }>({
     name: '',
     apiUrl: '',
+    wsUrl: '',
     username: '',
     password: '',
     notes: '',
+    configMapName: '',
+    configPath: '',
+    agentUrl: '',
     isEnabled: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [botStatuses, setBotStatuses] = useState<BotStatus[]>([]);
-  const [isLoadingStatus, setIsLoadingStatus] = useState(false);
-  const [actionLoading, setActionLoading] = useState<Record<string, string | null>>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<BotImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [statusChecking, setStatusChecking] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pageSize, setPageSize] = useState<number | 'all'>(10);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [sortKey, setSortKey] = useState<'name' | 'apiUrl' | 'username' | 'isEnabled'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     fetchBots();
   }, [fetchBots]);
 
-  // Connect to WebSocket on mount
   useEffect(() => {
-    websocketService.connect();
-    return () => {
-      websocketService.disconnect();
-    };
-  }, []);
+    setPageIndex(0);
+  }, [searchQuery, pageSize]);
 
-  // Subscribe to bot events when bots change
-  useEffect(() => {
-    if (bots.length === 0) return;
-
-    const enabledBotIds = bots.filter((b) => b.isEnabled).map((b) => b.id);
-    
-    // Subscribe to all enabled bots
-    enabledBotIds.forEach((botId) => {
-      websocketService.subscribeToBot(botId);
+  const filteredBots = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return bots;
+    return bots.filter((bot) => {
+      const haystack = [
+        bot.name,
+        bot.apiUrl,
+        bot.wsUrl,
+        bot.username,
+        bot.configMapName,
+        bot.configPath,
+        bot.agentUrl,
+        bot.id,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(query);
     });
+  }, [bots, searchQuery]);
 
-    // Cleanup: unsubscribe when component unmounts or bots change
-    return () => {
-      enabledBotIds.forEach((botId) => {
-        websocketService.unsubscribeFromBot(botId);
-      });
-    };
-  }, [bots]);
-
-  // Helper to normalize Freqtrade states (e.g., "running" to "RUNNING")
-  const normalizeState = (state?: string | null) => {
-    return state ? state.toUpperCase() : undefined;
-  };
-
-  // Helper function to add timeout to a promise
-  const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-      ),
-    ]);
-  };
-
-  // Function to load bot statuses (reusable)
-  const loadBotStatuses = useCallback(
-    async (specificBotId?: string) => {
-      const botsToLoad = specificBotId
-        ? bots.filter((b) => b.id === specificBotId && b.isEnabled)
-        : bots.filter((b) => b.isEnabled);
-
-      if (botsToLoad.length === 0) return;
-
-      if (!specificBotId) {
-        setIsLoadingStatus(true);
+  const sortedBots = useMemo(() => {
+    const sorted = [...filteredBots];
+    const dir = sortDir === 'asc' ? 1 : -1;
+    sorted.sort((a, b) => {
+      let aVal: string | number | boolean = '';
+      let bVal: string | number | boolean = '';
+      if (sortKey === 'name') {
+        aVal = a.name || '';
+        bVal = b.name || '';
+      } else if (sortKey === 'apiUrl') {
+        aVal = a.apiUrl || '';
+        bVal = b.apiUrl || '';
+      } else if (sortKey === 'username') {
+        aVal = a.username || '';
+        bVal = b.username || '';
+      } else if (sortKey === 'isEnabled') {
+        aVal = a.isEnabled ? 1 : 0;
+        bVal = b.isEnabled ? 1 : 0;
       }
 
-      const statusPromises = botsToLoad.map(async (bot) => {
-        try {
-          // First check if bot is alive with ping (short timeout: 3 seconds)
-          const pingResult = await withTimeout(
-            proxyApi.get(bot.id, 'api/v1/ping').catch(() => null),
-            3000
-          ).catch(() => null);
-          const isOnline = pingResult !== null;
-
-          if (!isOnline) {
-            return {
-              botId: bot.id,
-              status: null,
-              error: 'Bot is offline or unreachable',
-              isOnline: false,
-            };
-          }
-
-          // Get bot state, open trades, and profit in parallel (only if bot is online)
-          // Use shorter timeout (5 seconds) for these requests
-          const [configData, openTrades, profit] = await Promise.allSettled([
-            withTimeout(proxyApi.get(bot.id, 'api/v1/show_config'), 5000).catch(() => null),
-            withTimeout(proxyApi.get(bot.id, 'api/v1/status'), 5000).catch(() => []),
-            withTimeout(proxyApi.get(bot.id, 'api/v1/profit'), 5000).catch(() => null),
-          ]).then((results) =>
-            results.map((r) => (r.status === 'fulfilled' ? r.value : null))
-          );
-
-          const tradesArray = Array.isArray(openTrades) ? openTrades : [];
-          const profitData = profit as { profit_closed_coin?: number; profit_closed_percent?: number } | null;
-          
-          // Extract bot configuration data
-          const config = configData && typeof configData === 'object' ? configData as {
-            state?: string;
-            runmode?: string;
-            dry_run?: boolean;
-            exchange?: string;
-            strategy?: string;
-            timeframe?: string;
-            stoploss?: number;
-          } : null;
-          
-          const botState = config?.state;
-          const runmode = config?.runmode || (config?.dry_run !== undefined ? (config.dry_run ? 'dry_run' : 'live') : undefined);
-          const exchange = config?.exchange;
-          const strategy = config?.strategy;
-          const timeframe = config?.timeframe;
-          const stoploss = config?.stoploss;
-
-          const status = {
-            state: botState,
-            runmode: runmode,
-            exchange: exchange,
-            strategy: strategy,
-            timeframe: timeframe,
-            stoploss: stoploss,
-            trade_count: tradesArray.length,
-            profit_closed_coin: profitData?.profit_closed_coin,
-            profit_closed_percent: profitData?.profit_closed_percent,
-          };
-          return { botId: bot.id, status, isOnline: true };
-        } catch (err) {
-          return {
-            botId: bot.id,
-            status: null,
-            error: err instanceof Error ? err.message : 'Failed to load status',
-            isOnline: false,
-          };
-        }
-      });
-
-      // Use Promise.allSettled to not block on individual failures
-      const results = await Promise.allSettled(statusPromises);
-      const statuses = results.map((result, index) =>
-        result.status === 'fulfilled' ? result.value : {
-          botId: botsToLoad[index]?.id || 'unknown',
-          status: null,
-          error: result.reason instanceof Error ? result.reason.message : 'Failed to load status',
-          isOnline: false,
-        }
-      );
-      
-      if (specificBotId) {
-        // Update only the specific bot
-        setBotStatuses((prev) =>
-          prev.map((s) => {
-            const updated = statuses.find((ns) => ns.botId === s.botId);
-            return updated || s;
-          })
-        );
-      } else {
-        // Update all statuses
-        setBotStatuses(statuses);
-        setIsLoadingStatus(false);
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return (aVal - bVal) * dir;
       }
-    },
-    [bots]
-  );
+      return String(aVal).localeCompare(String(bVal)) * dir;
+    });
+    return sorted;
+  }, [filteredBots, sortDir, sortKey]);
 
-  // Handle individual bot refresh
-  const handleRefreshBot = async (botId: string) => {
-    setActionLoading((prev) => ({ ...prev, [botId]: 'refresh' }));
-    try {
-      await loadBotStatuses(botId);
-    } finally {
-      setActionLoading((prev) => {
-        const next = { ...prev };
-        delete next[botId];
-        return next;
-      });
-    }
+  const totalRows = sortedBots.length;
+  const effectivePageSize = pageSize === 'all' ? totalRows || 1 : pageSize;
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalRows / effectivePageSize));
+  const currentPage = Math.min(pageIndex, totalPages - 1);
+  const startIndex = currentPage * effectivePageSize;
+  const endIndex = startIndex + effectivePageSize;
+  const pagedBots = sortedBots.slice(startIndex, endIndex);
+
+  const formatUpdatedAt = (timestamp: number) => {
+    if (!timestamp) return '—';
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString();
   };
 
-  // Load initial statuses only (WebSockets handle real-time updates)
   useEffect(() => {
-    loadBotStatuses();
-  }, [loadBotStatuses]);
-
-  // Listen to WebSocket events for real-time updates
-  useEffect(() => {
-    const handleBotEvent = (event: FreqHubEvent) => {
-      if (!event.botId) return;
-
-      // Handle different event types
-      if (event.type === 'bot_open_trades_update') {
-        const trades = Array.isArray(event.data) ? event.data : [];
-        const status = {
-          trade_count: trades.length,
-        };
-
-        setBotStatuses((prev) => {
-          const existing = prev.find((s) => s.botId === event.botId);
-          if (existing) {
-            return prev.map((s) =>
-              s.botId === event.botId
-                ? {
-                    ...s,
-                    status: {
-                      ...existing.status,
-                      ...status,
-                    },
-                    error: undefined,
-                  }
-                : s
-            );
-          } else {
-            return [...prev, { botId: event.botId!, status }];
-          }
-        });
-      } else if (event.type === 'bot_ping_update' || event.type === 'bot_online') {
-        // Ping updates or online events indicate bot is alive - mark as online
-        setBotStatuses((prev) => {
-          const existing = prev.find((s) => s.botId === event.botId);
-          if (existing) {
-            return prev.map((s) =>
-              s.botId === event.botId
-                ? {
-                    ...s,
-                    isOnline: true,
-                    error: undefined,
-                  }
-                : s
-            );
-          } else {
-            return [...prev, { botId: event.botId!, status: null, isOnline: true }];
-          }
-        });
-        // If bot came back online, trigger a refresh of its status
-        if (event.type === 'bot_online' && event.botId) {
-          setTimeout(() => {
-            loadBotStatuses(event.botId);
-          }, 500);
-        }
-      } else if (event.type === 'bot_offline') {
-        // Bot went offline - update status
-        const offlineData = event.data as { error?: string };
-        setBotStatuses((prev) => {
-          const existing = prev.find((s) => s.botId === event.botId);
-          if (existing) {
-            return prev.map((s) =>
-              s.botId === event.botId
-                ? {
-                    ...s,
-                    isOnline: false,
-                    error: offlineData.error || 'Bot is offline or unreachable',
-                    status: null, // Clear status when offline
-                  }
-                : s
-            );
-          } else {
-            return [...prev, {
-              botId: event.botId!,
-              status: null,
-              isOnline: false,
-              error: offlineData.error || 'Bot is offline or unreachable',
-            }];
-          }
-        });
-      } else if (event.type === 'bot_state_update') {
-        const stateData = event.data as { state?: string; runmode?: string; dry_run?: boolean; exchange?: string; strategy?: string; timeframe?: string; stoploss?: number };
-        const runmode = stateData.runmode || (stateData.dry_run !== undefined ? (stateData.dry_run ? 'dry_run' : 'live') : undefined);
-        
-        setBotStatuses((prev) => {
-          const existing = prev.find((s) => s.botId === event.botId);
-          if (existing) {
-            return prev.map((s) =>
-              s.botId === event.botId
-                ? {
-                    ...s,
-                    status: {
-                      ...existing.status,
-                      state: stateData.state,
-                      runmode: runmode,
-                      exchange: stateData.exchange,
-                      strategy: stateData.strategy,
-                      timeframe: stateData.timeframe,
-                      stoploss: stateData.stoploss,
-                    },
-                  }
-                : s
-            );
-          } else {
-            return [...prev, { botId: event.botId!, status: { state: stateData.state, runmode: runmode, exchange: stateData.exchange, strategy: stateData.strategy, timeframe: stateData.timeframe, stoploss: stateData.stoploss }, isOnline: true }];
-          }
-        });
-      } else if (event.type === 'bot_profit_update') {
-        const profitData = event.data as { profit_closed_coin?: number; profit_closed_percent?: number };
-        
-        setBotStatuses((prev) => {
-          const existing = prev.find((s) => s.botId === event.botId);
-          if (existing && existing.status) {
-            return prev.map((s) =>
-              s.botId === event.botId
-                ? {
-                    ...s,
-                    status: {
-                      ...existing.status,
-                      profit_closed_coin: profitData.profit_closed_coin,
-                      profit_closed_percent: profitData.profit_closed_percent,
-                    },
-                  }
-                : s
-            );
-          }
-          return prev;
-        });
-      }
-    };
-
-    // Subscribe to bot events
-    const unsubscribe = websocketService.on('bot_event', handleBotEvent);
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  // Helper function to get connectivity status (Online/Offline)
-  const getConnectivityStatus = (status: BotStatus | undefined) => {
-    if (!status || status.error || !status.isOnline) {
-      return { text: 'Offline', color: 'text-gray-500', icon: XCircle };
+    if (pageIndex !== currentPage) {
+      setPageIndex(currentPage);
     }
-    return { text: 'Online', color: 'text-green-500', icon: CheckCircle2 };
-  };
-
-  // Helper function to get bot operational state display info
-  const getBotStateDisplay = (status: BotStatus | undefined) => {
-    if (!status || status.error || !status.isOnline) {
-      return null; // Don't show operational state if offline
-    }
-    const state = normalizeState(status.status?.state);
-    if (state === 'RUNNING') {
-      return { text: 'Running', color: 'text-green-500', icon: CheckCircle2 };
-    }
-    if (state === 'STOPPED') {
-      return { text: 'Stopped', color: 'text-red-500', icon: Square };
-    }
-    if (state === 'PAUSED') {
-      return { text: 'Paused', color: 'text-yellow-500', icon: Pause };
-    }
-    // Default: online but state unknown
-    return { text: 'Unknown', color: 'text-blue-500', icon: CheckCircle2 };
-  };
-
-  // Handle bot control actions
-  const handleBotAction = async (botId: string, action: 'start' | 'stop' | 'pause' | 'reload_config') => {
-    setActionLoading((prev) => ({ ...prev, [botId]: action }));
-    try {
-      const response = await proxyApi.post(botId, `api/v1/${action}`, {});
-      
-      // Show success message if Freqtrade returned a status message
-      if (response && typeof response === 'object' && 'status' in response) {
-        const statusMessage = (response as { status?: string }).status;
-        if (statusMessage && action === 'reload_config') {
-          // Status will be updated automatically via refresh
-        }
-      }
-      
-      // Reload status after action (wait 1.5 seconds for bot to process the command)
-      setTimeout(() => {
-        loadBotStatuses(botId);
-      }, 1500);
-    } catch (err) {
-      appLogger.error(`Failed to ${action} bot ${botId}:`, err);
-      const errorMessage = err instanceof Error ? err.message : `Failed to ${action} bot`;
-      alert(`❌ ${errorMessage}`);
-    } finally {
-      setActionLoading((prev) => ({ ...prev, [botId]: null }));
-    }
-  };
+  }, [currentPage, pageIndex]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -445,9 +149,13 @@ export function BotManagement() {
         const updateData: UpdateBotRequest = {
           name: formData.name,
           apiUrl: formData.apiUrl,
+          wsUrl: formData.wsUrl || undefined,
           username: formData.username,
           notes: formData.notes,
           isEnabled: formData.isEnabled,
+          agentUrl: formData.agentUrl || undefined,
+          configMapName: formData.configMapName,
+          configPath: formData.configPath,
         };
         if (formData.password) {
           updateData.password = formData.password;
@@ -460,15 +168,30 @@ export function BotManagement() {
         const createData: CreateBotRequest = {
           name: formData.name,
           apiUrl: formData.apiUrl,
+          wsUrl: formData.wsUrl || undefined,
           username: formData.username,
           password: formData.password,
           notes: formData.notes,
+          agentUrl: formData.agentUrl || undefined,
+          configMapName: formData.configMapName,
+          configPath: formData.configPath,
         };
         await botApi.create(createData);
         await fetchBots();
       }
       setShowForm(false);
-      setFormData({ name: '', apiUrl: '', username: '', password: '', notes: '', isEnabled: true });
+      setFormData({
+        name: '',
+        apiUrl: '',
+        wsUrl: '',
+        username: '',
+        password: '',
+        notes: '',
+        configMapName: '',
+        configPath: '',
+        agentUrl: '',
+        isEnabled: true,
+      });
       setShowPassword(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save bot');
@@ -477,48 +200,93 @@ export function BotManagement() {
     }
   };
 
-  const handleEdit = (bot: { id: string; name: string; apiUrl: string; username: string; notes?: string; isEnabled: boolean }) => {
+  const checkBotStopped = useCallback(async (botId: string, actionLabel: 'edit' | 'delete') => {
+    setStatusChecking((prev) => ({ ...prev, [botId]: true }));
+    try {
+      const config = await proxyApi.get(botId, 'api/v1/show_config') as { state?: string } | null;
+      const state = config?.state?.toUpperCase();
+      if (!state) {
+        return confirm(`Unable to verify bot state. Do you want to ${actionLabel} anyway?`);
+      }
+      if (state !== 'STOPPED') {
+        alert(`The bot must be stopped before you can ${actionLabel}.`);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      return confirm(`Unable to verify bot state. Do you want to ${actionLabel} anyway?`);
+    } finally {
+      setStatusChecking((prev) => ({ ...prev, [botId]: false }));
+    }
+  }, []);
+
+  const handleEdit = useCallback(async (bot: {
+    id: string;
+    name: string;
+    apiUrl: string;
+    wsUrl?: string | null;
+    username: string;
+    notes?: string;
+    isEnabled: boolean;
+    agentUrl?: string | null;
+    configMapName?: string | null;
+    configPath?: string | null;
+  }) => {
     if (user?.role === 'auditor') {
       setError('Read-only: auditors cannot edit bots.');
       return;
     }
-    // Check if bot is running
-    const status = botStatuses.find((s) => s.botId === bot.id);
-    const botState = normalizeState(status?.status?.state);
-    
-    if (botState === 'RUNNING') {
-      alert('❌ Cannot edit a bot that is currently running. Please stop the bot first.');
-      return;
-    }
-    
+    const canEdit = await checkBotStopped(bot.id, 'edit');
+    if (!canEdit) return;
     setEditingBot(bot.id);
     setFormData({
       name: bot.name,
       apiUrl: bot.apiUrl,
+      wsUrl: bot.wsUrl || '',
       username: bot.username,
       password: '', // Don't pre-fill password
       notes: bot.notes || '',
+      configMapName: bot.configMapName || '',
+      configPath: bot.configPath || '',
+      agentUrl: bot.agentUrl || '',
       isEnabled: bot.isEnabled,
     });
     setShowForm(true);
-  };
+  }, [checkBotStopped, user?.role]);
+
+  useEffect(() => {
+    if (!bots.length) return;
+    const params = new URLSearchParams(location.search);
+    const editId = params.get('edit');
+    if (!editId) return;
+    if (handledEditRef.current === editId) return;
+    handledEditRef.current = editId;
+    const bot = bots.find((b) => b.id === editId);
+    if (bot) {
+      void handleEdit(bot);
+    }
+  }, [bots, handleEdit, location.search]);
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingBot(null);
-    setFormData({ name: '', apiUrl: '', username: '', password: '', notes: '', isEnabled: true });
+    setFormData({
+      name: '',
+      apiUrl: '',
+      wsUrl: '',
+      username: '',
+      password: '',
+      notes: '',
+      configMapName: '',
+      configPath: '',
+      agentUrl: '',
+      isEnabled: true,
+    });
   };
 
   const handleDelete = async (id: string) => {
-    // Check if bot is running
-    const status = botStatuses.find((s) => s.botId === id);
-    const botState = normalizeState(status?.status?.state);
-    
-    if (botState === 'RUNNING') {
-      alert('❌ Cannot delete a bot that is currently running. Please stop the bot first.');
-      return;
-    }
-    
+    const canDelete = await checkBotStopped(id, 'delete');
+    if (!canDelete) return;
     if (confirm('Are you sure you want to delete this bot?')) {
       try {
         await botApi.delete(id);
@@ -529,12 +297,57 @@ export function BotManagement() {
     }
   };
 
-  const handleTest = async (id: string) => {
+  const templateBasePath = config.basePath.replace(/\/?$/, '/');
+  const templateDownloadUrl = `${templateBasePath}freqhub_example_bots_list.xlsx`;
+
+  const handleImportClick = () => {
+    if (user?.role === 'auditor') return;
+    importFileRef.current?.click();
+  };
+
+  const handleImportChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImportLoading(true);
+    setImportResult(null);
+    setImportError(null);
     try {
-      const result = await botApi.testConnection(id);
-      alert(result.message);
+      const result = await botApi.importBots(file);
+      setImportResult(result);
+      await fetchBots();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to test connection');
+      setImportError(err instanceof Error ? err.message : 'Failed to import bots');
+    } finally {
+      setImportLoading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const blob = await botApi.exportBots();
+      const url = window.URL.createObjectURL(blob);
+      const now = new Date();
+      const timestamp = [
+        now.getUTCFullYear(),
+        String(now.getUTCMonth() + 1).padStart(2, '0'),
+        String(now.getUTCDate()).padStart(2, '0'),
+        String(now.getUTCHours()).padStart(2, '0'),
+        String(now.getUTCMinutes()).padStart(2, '0'),
+      ].join('');
+      const filename = `freqhub_bots_export_${timestamp}.xlsx`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to export bots');
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -546,25 +359,109 @@ export function BotManagement() {
             <h1 className="text-3xl font-bold text-foreground">Bot Management</h1>
             <p className="text-muted-foreground mt-2">Manage your Freqtrade bot connections</p>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            disabled={user?.role === 'auditor'}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={user?.role === 'auditor' ? 'Read-only: auditors cannot add bots.' : undefined}
-          >
-            {showForm ? (
-              <>
-                <X className="h-4 w-4" />
-                Cancel
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" />
-                Add Bot
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".xlsx"
+              className="hidden"
+              onChange={handleImportChange}
+            />
+            <a
+              href={templateDownloadUrl}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              download="freqhub_example_bots_list.xlsx"
+            >
+              <Download className="h-4 w-4" />
+              example file
+            </a>
+            <button
+              onClick={handleExport}
+              disabled={exportLoading}
+              className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {exportLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Exporting
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Export XLSX
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleImportClick}
+              disabled={user?.role === 'auditor' || importLoading}
+              className="flex items-center gap-2 px-4 py-2 border border-border text-foreground rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={user?.role === 'auditor' ? 'Read-only: auditors cannot import bots.' : undefined}
+            >
+              {importLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Importing
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Import XLSX
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              disabled={user?.role === 'auditor'}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title={user?.role === 'auditor' ? 'Read-only: auditors cannot add bots.' : undefined}
+            >
+              {showForm ? (
+                <>
+                  <X className="h-4 w-4" />
+                  Cancel
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4" />
+                  Add Bot
+                </>
+              )}
+            </button>
+          </div>
         </div>
+
+        {(importResult || importError) && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Import results</CardTitle>
+              <CardDescription>Upload summary for the latest XLSX file</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {importError ? (
+                <div className="text-sm text-red-500">{importError}</div>
+              ) : importResult ? (
+                <div className="space-y-2 text-sm text-foreground">
+                  <div>
+                    Total: {importResult.total} · Created: {importResult.created} · Updated: {importResult.updated} · Skipped: {importResult.skipped} · Failed: {importResult.failed}
+                  </div>
+                  {importResult.errors.length > 0 && (
+                    <div className="text-xs text-red-500">
+                      {importResult.errors.slice(0, 5).map((err) => (
+                        <div key={`${err.row}-${err.message}`}>
+                          Row {err.row}: {err.message}{err.identifier ? ` (${err.identifier})` : ''}
+                        </div>
+                      ))}
+                      {importResult.errors.length > 5 && (
+                        <div>And {importResult.errors.length - 5} more errors.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        )}
 
         {showForm && user?.role !== 'auditor' && (
           <Card className="mb-8">
@@ -600,6 +497,30 @@ export function BotManagement() {
                     className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="http://localhost:8080"
                     required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    WebSocket URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.wsUrl || ''}
+                    onChange={(e) => setFormData({ ...formData, wsUrl: e.target.value })}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="ws://localhost:8080"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Agent URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.agentUrl}
+                    onChange={(e) => setFormData({ ...formData, agentUrl: e.target.value })}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="http://localhost:3010"
                   />
                 </div>
                 <div>
@@ -673,6 +594,50 @@ export function BotManagement() {
                     rows={3}
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    ConfigMap Name (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.configMapName || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({
+                        ...formData,
+                        configMapName: value,
+                        configPath: value ? '' : formData.configPath,
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="e.g., freqtrade-bot-1-config"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Kubernetes reference only. For runmode changes, set a writable Config Path (PVC).
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Config Path (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.configPath || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({
+                        ...formData,
+                        configPath: value,
+                        configMapName: value ? '' : formData.configMapName,
+                      });
+                    }}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+                    placeholder="/freqtrade/user_data/config.json"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Required to enable dry-run/live changes (Docker and K8s via writable volume). Example: bot-1/config.json when RUNMODE_CONFIG_BASE_DIR is set.
+                  </p>
+                </div>
                 <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
                   <div className="flex items-center gap-3">
                     {formData.isEnabled ? (
@@ -721,9 +686,18 @@ export function BotManagement() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 ring-1 ring-primary/40 flex items-center gap-2"
                   >
-                    {isSubmitting ? 'Saving...' : editingBot ? 'Update Bot' : 'Create Bot'}
+                    {isSubmitting ? (
+                      'Saving...'
+                    ) : editingBot ? (
+                      'Update Bot'
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4" />
+                        Create Bot
+                      </>
+                    )}
                   </button>
                 </div>
               </form>
@@ -731,12 +705,8 @@ export function BotManagement() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Bots</CardTitle>
-            <CardDescription>List of all configured Freqtrade bots</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card className="border-0 shadow-none bg-transparent">
+          <CardContent className="pt-4">
             {bots.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No bots configured yet.</p>
@@ -744,286 +714,246 @@ export function BotManagement() {
               </div>
             ) : (
               <div className="space-y-4">
-                {isLoadingStatus && (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                    <span className="text-muted-foreground">Loading statuses...</span>
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-1 items-center gap-3">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by name, URL, username, notes, config..."
+                      className="w-full md:w-96 px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <div className="text-sm text-muted-foreground">
+                      {totalRows} results
+                    </div>
                   </div>
-                )}
-                {bots.map((bot) => {
-                  const status = botStatuses.find((s) => s.botId === bot.id);
-                  const currentAction = actionLoading[bot.id];
-                  const botState = normalizeState(status?.status?.state);
-                  
-                  return (
-                    <div
-                      key={bot.id}
-                      className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-muted-foreground">Rows</label>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setPageSize(value === 'all' ? 'all' : Number(value));
+                      }}
+                      className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div>
+                      <option value={10}>10</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value="all">All</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-muted/40 text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3 font-medium">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (sortKey === 'name') {
+                                setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                              } else {
+                                setSortKey('name');
+                                setSortDir('asc');
+                              }
+                            }}
+                            className="flex items-center gap-2 hover:text-foreground"
+                          >
+                            Name {sortKey === 'name' ? (sortDir === 'asc' ? '^' : 'v') : ''}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 font-medium">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (sortKey === 'apiUrl') {
+                                setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                              } else {
+                                setSortKey('apiUrl');
+                                setSortDir('asc');
+                              }
+                            }}
+                            className="flex items-center gap-2 hover:text-foreground"
+                          >
+                            API URL {sortKey === 'apiUrl' ? (sortDir === 'asc' ? '^' : 'v') : ''}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 font-medium">WS URL</th>
+                        <th className="px-4 py-3 font-medium">Agent URL</th>
+                        <th className="px-4 py-3 font-medium">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (sortKey === 'username') {
+                                setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                              } else {
+                                setSortKey('username');
+                                setSortDir('asc');
+                              }
+                            }}
+                            className="flex items-center gap-2 hover:text-foreground"
+                          >
+                            Username {sortKey === 'username' ? (sortDir === 'asc' ? '^' : 'v') : ''}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 font-medium">Config</th>
+                        <th className="px-4 py-3 font-medium">Last Update</th>
+                        <th className="px-4 py-3 font-medium">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (sortKey === 'isEnabled') {
+                                setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+                              } else {
+                                setSortKey('isEnabled');
+                                setSortDir('asc');
+                              }
+                            }}
+                            className="flex items-center gap-2 hover:text-foreground"
+                          >
+                            Status {sortKey === 'isEnabled' ? (sortDir === 'asc' ? '^' : 'v') : ''}
+                          </button>
+                        </th>
+                        <th className="px-4 py-3 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedBots.map((bot) => (
+                        <tr key={bot.id} className="group border-t border-border hover:bg-muted/30">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
                               <Link
                                 to={`/bots/${bot.id}`}
-                                className="text-lg font-semibold text-foreground hover:text-primary transition-colors"
+                                className="font-medium text-foreground hover:text-primary transition-colors"
                               >
                                 {bot.name}
                               </Link>
-                              <p className="text-xs text-muted-foreground font-mono mt-0.5">{bot.id}</p>
                             </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-muted-foreground block max-w-[220px] truncate">
+                              {bot.apiUrl}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-muted-foreground block max-w-[220px] truncate">
+                              {bot.wsUrl || '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-muted-foreground block max-w-[220px] truncate">
+                              {bot.agentUrl || '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-muted-foreground">{bot.username}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-muted-foreground space-y-1">
+                              {bot.configMapName && (
+                                <div className="font-mono text-xs block max-w-[160px] truncate">
+                                  {bot.configMapName}
+                                </div>
+                              )}
+                              {bot.configPath && (
+                                <div className="font-mono text-xs block max-w-[160px] truncate">
+                                  {bot.configPath}
+                                </div>
+                              )}
+                              {!bot.configMapName && !bot.configPath && (
+                                <div className="text-xs text-muted-foreground">—</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-muted-foreground">
+                              {formatUpdatedAt(bot.updatedAt)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
                             {bot.isEnabled ? (
-                              <>
-                                {(() => {
-                                  if (!status) {
-                                    return (
-                                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Loading...
-                                      </span>
-                                    );
-                                  }
-                                  const connectivity = getConnectivityStatus(status);
-                                  const ConnectivityIcon = connectivity.icon;
-                                  const stateDisplay = getBotStateDisplay(status);
-                                  const runmode = status.status?.runmode;
-                                  return (
-                                    <div className="flex items-center gap-2">
-                                      <span className={`flex items-center gap-1 text-xs ${connectivity.color}`}>
-                                        <ConnectivityIcon className="h-4 w-4" />
-                                        {connectivity.text}
-                                      </span>
-                                      {stateDisplay && (
-                                        <>
-                                          <span className="text-xs text-muted-foreground">•</span>
-                                          <span className={`flex items-center gap-1 text-xs ${stateDisplay.color}`}>
-                                            <stateDisplay.icon className="h-4 w-4" />
-                                            {stateDisplay.text}
-                                          </span>
-                                        </>
-                                      )}
-                                      {runmode && (
-                                        <span
-                                          className={`text-xs px-2 py-0.5 rounded ${
-                                            runmode === 'dry_run'
-                                              ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30'
-                                              : 'bg-green-500/20 text-green-500 border border-green-500/30'
-                                          }`}
-                                        >
-                                          {runmode === 'dry_run' ? '🔶 Dry Run' : '💰 Live Trading'}
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </>
+                              <span className="inline-flex items-center gap-1 text-xs text-green-500">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Enabled
+                              </span>
                             ) : (
-                              <span className="flex items-center gap-1 text-xs text-red-500">
+                              <span className="inline-flex items-center gap-1 text-xs text-red-500">
                                 <XCircle className="h-4 w-4" />
                                 Disabled
                               </span>
                             )}
-                          </div>
-                          <div className="text-sm text-muted-foreground space-y-1">
-                            <p>
-                              <span className="font-medium">URL:</span> {bot.apiUrl}
-                            </p>
-                            <p>
-                              <span className="font-medium">Username:</span> {bot.username}
-                            </p>
-                            {status?.error ? (
-                              <p className="text-red-500">Error: {status.error}</p>
-                            ) : status?.status && bot.isEnabled ? (
-                              <>
-                                {status.status.state && (
-                                  <p>
-                                    <span className="font-medium">State:</span>{' '}
-                                    <span className="font-mono text-xs">{status.status.state}</span>
-                                  </p>
-                                )}
-                                {status.status.runmode && (
-                                  <p>
-                                    <span className="font-medium">Mode:</span>{' '}
-                                    <span
-                                      className={
-                                        status.status.runmode === 'dry_run'
-                                          ? 'text-yellow-500 font-semibold'
-                                          : 'text-green-500 font-semibold'
-                                      }
-                                    >
-                                      {status.status.runmode === 'dry_run' ? '🔶 Dry Run' : '💰 Live Trading'}
-                                    </span>
-                                  </p>
-                                )}
-                                {status.status.exchange && (
-                                  <p>
-                                    <span className="font-medium">Exchange:</span>{' '}
-                                    <span className="font-semibold">{status.status.exchange}</span>
-                                  </p>
-                                )}
-                                {status.status.strategy && (
-                                  <p>
-                                    <span className="font-medium">Strategy:</span>{' '}
-                                    <span className="font-mono text-sm">{status.status.strategy}</span>
-                                  </p>
-                                )}
-                                {status.status.timeframe && (
-                                  <p>
-                                    <span className="font-medium">Timeframe:</span>{' '}
-                                    <span className="font-mono text-sm">{status.status.timeframe}</span>
-                                  </p>
-                                )}
-                                {status.status.stoploss !== undefined && (
-                                  <p>
-                                    <span className="font-medium">Stoploss:</span>{' '}
-                                    <span
-                                      className={
-                                        status.status.stoploss >= 0 ? 'text-green-500' : 'text-red-500'
-                                      }
-                                    >
-                                      {status.status.stoploss.toFixed(2)}%
-                                    </span>
-                                  </p>
-                                )}
-                                <p>
-                                  <span className="font-medium">Open Trades:</span>{' '}
-                                  {status.status.trade_count || 0}
-                                </p>
-                                {status.status.profit_closed_coin !== undefined && (
-                                  <p>
-                                    <span className="font-medium">Profit:</span>{' '}
-                                    <span
-                                      className={
-                                        status.status.profit_closed_coin >= 0
-                                          ? 'text-green-500'
-                                          : 'text-red-500'
-                                      }
-                                    >
-                                      ${status.status.profit_closed_coin.toFixed(2)}
-                                    </span>
-                                  </p>
-                                )}
-                              </>
-                            ) : null}
-                            {bot.notes && (
-                              <p className="mt-2 pt-2 border-t border-border">
-                                <span className="font-medium">Notes:</span>{' '}
-                                <span className="text-foreground">{bot.notes}</span>
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Quick Actions */}
-                        <div className="flex items-center gap-1">
-                          {bot.isEnabled && (
-                            <>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity">
                               <button
-                                onClick={() => handleBotAction(bot.id, 'start')}
-                                disabled={!!currentAction || !status?.isOnline || botState === 'RUNNING'}
-                                className="p-2 text-green-500 hover:bg-green-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Start bot"
+                                onClick={() => void handleEdit(bot)}
+                                disabled={user?.role === 'auditor' || statusChecking[bot.id]}
+                                className="p-2 text-primary hover:bg-primary/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={
+                                  statusChecking[bot.id]
+                                    ? 'Checking bot state...'
+                                    : user?.role === 'auditor'
+                                    ? 'Read-only: auditors cannot edit bots.'
+                                    : 'Edit Bot'
+                                }
                               >
-                                {currentAction === 'start' ? (
+                                {statusChecking[bot.id] ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                  <Play className="h-4 w-4" />
+                                  <Edit className="h-4 w-4" />
                                 )}
                               </button>
                               <button
-                                onClick={() => handleBotAction(bot.id, 'stop')}
-                                disabled={!!currentAction || !status?.isOnline || botState === 'STOPPED'}
+                                onClick={() => void handleDelete(bot.id)}
+                                disabled={statusChecking[bot.id]}
                                 className="p-2 text-red-500 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Stop bot"
+                                title={statusChecking[bot.id] ? 'Checking bot state...' : 'Delete Bot'}
                               >
-                                {currentAction === 'stop' ? (
+                                {statusChecking[bot.id] ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
-                                  <Square className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" />
                                 )}
                               </button>
-                              <button
-                                onClick={() => handleBotAction(bot.id, 'pause')}
-                                disabled={!!currentAction || !status?.isOnline || botState === 'PAUSED' || botState === 'STOPPED'}
-                                className="p-2 text-yellow-500 hover:bg-yellow-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Pause bot"
-                              >
-                                {currentAction === 'pause' ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Pause className="h-4 w-4" />
-                                )}
-                              </button>
-                              <button
-                                onClick={() => handleBotAction(bot.id, 'reload_config')}
-                                disabled={!!currentAction || !status?.isOnline || botState === 'STOPPED'}
-                                className="p-2 text-blue-500 hover:bg-blue-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Reload configuration"
-                              >
-                                {currentAction === 'reload_config' ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <RotateCcw className="h-4 w-4" />
-                                )}
-                              </button>
-                            </>
-                          )}
-                          <button
-                            onClick={() => handleRefreshBot(bot.id)}
-                            disabled={!!actionLoading[bot.id]}
-                            className="p-2 text-blue-500 hover:bg-blue-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Refresh this bot"
-                          >
-                            {actionLoading[bot.id] === 'refresh' ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-4 w-4" />
-                            )}
-                          </button>
-                          <Link
-                            to={`/bots/${bot.id}`}
-                            className="p-2 text-muted-foreground hover:bg-muted rounded transition-colors"
-                            title="View details"
-                          >
-                            <Settings className="h-4 w-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleEdit(bot)}
-                            disabled={
-                              user?.role === 'auditor' ||
-                              normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING'
-                            }
-                            className="p-2 text-primary hover:bg-primary/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={
-                              user?.role === 'auditor'
-                                ? 'Read-only: auditors cannot edit bots.'
-                                : normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING'
-                                  ? 'Cannot edit a running bot. Stop it first.'
-                                  : 'Edit Bot'
-                            }
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleTest(bot.id)}
-                            className="p-2 text-blue-500 hover:bg-blue-500/20 rounded transition-colors"
-                            title="Test Connection"
-                          >
-                            <TestTube className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(bot.id)}
-                            disabled={normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING'}
-                            className="p-2 text-red-500 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title={normalizeState(botStatuses.find((s) => s.botId === bot.id)?.status?.state) === 'RUNNING' ? 'Cannot delete a running bot. Stop it first.' : 'Delete Bot'}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <div>
+                    {pageSize === 'all'
+                      ? `Showing ${totalRows} of ${totalRows}`
+                      : `Showing ${Math.min(startIndex + 1, totalRows)}-${Math.min(endIndex, totalRows)} of ${totalRows}`}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPageIndex((prev) => Math.max(0, prev - 1))}
+                      disabled={pageSize === 'all' || currentPage === 0}
+                      className="px-3 py-1 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Prev
+                    </button>
+                    <span>
+                      Page {currentPage + 1} of {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPageIndex((prev) => Math.min(totalPages - 1, prev + 1))}
+                      disabled={pageSize === 'all' || currentPage >= totalPages - 1}
+                      className="px-3 py-1 border border-border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

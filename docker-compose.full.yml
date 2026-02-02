@@ -50,6 +50,53 @@ services:
       retries: 3
       start_period: 10s
 
+  # MongoDB for Config Service
+  mongodb:
+    image: mongo:7.0
+    container_name: freqhub-mongodb
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    volumes:
+      - mongodb-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=freqhub_config
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # FreqHub Config Service
+  config-service:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile.config-service
+    container_name: freqhub-config-service
+    ports:
+      - "${CONFIG_SERVICE_PORT:-3005}:3005"
+    environment:
+      - PORT=3005
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DATABASE=freqhub_config
+      - FREQHUB_BACKEND_URL=http://backend:3001
+      - FREQHUB_BACKEND_API_KEY=${FREQHUB_BACKEND_API_KEY:-}
+      - API_KEY=${CONFIG_SERVICE_API_KEY:-change-this-config-service-api-key-min-32-chars}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-this-encryption-key-min-32-characters}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    networks:
+      - freqhub-network
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      backend:
+        condition: service_started
+
   # FreqHub Backend
   backend:
     build:
@@ -226,4 +273,8 @@ services:
 networks:
   freqhub-network:
     driver: bridge
+
+volumes:
+  mongodb-data:
+    driver: local
 

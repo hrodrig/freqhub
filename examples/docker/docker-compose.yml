@@ -40,7 +40,7 @@
 # Example:
 #   export IMAGE_REGISTRY=docker.io
 #   export IMAGE_USERNAME=your-username
-#   export IMAGE_VERSION=v0.2.0
+#   export IMAGE_VERSION=v0.2.22
 #   docker compose up -d
 
 name: freqhub-stack
@@ -77,6 +77,9 @@ services:
       - DATABASE_PATH=/app/data/freqhub.db
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-change-this-encryption-key-in-production}
       - CORS_ORIGIN=http://localhost:3000
+      # Runmode editor (optional)
+      - RUNMODE_EDITOR_ENABLED=${RUNMODE_EDITOR_ENABLED:-false}
+      - RUNMODE_CONFIG_BASE_DIR=${RUNMODE_CONFIG_BASE_DIR:-/app/bot-configs}
       # Valkey Cache Configuration
       - VALKEY_ENABLED=${VALKEY_ENABLED:-true}
       - VALKEY_HOST=valkey
@@ -84,6 +87,10 @@ services:
       - VALKEY_PASSWORD=${VALKEY_PASSWORD:-}
     volumes:
       - ./freqhub-data:/app/data
+      # Mount bot config directories so runmode editor can update config.json files
+      - ./freqtrade-data-1:/app/bot-configs/bot-1
+      - ./freqtrade-data-2:/app/bot-configs/bot-2
+      - ./freqtrade-data-3:/app/bot-configs/bot-3
     networks:
       - freqtrade-network
     restart: unless-stopped
@@ -122,23 +129,6 @@ services:
       - ./freqtrade-data-1:/freqtrade/user_data
     ports:
       - "8080:8080"  # API port
-    environment:
-      # API Server Configuration
-      - FREQTRADE__API_SERVER__ENABLED=true
-      - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
-      - FREQTRADE__API_SERVER__LISTEN_PORT=8080
-      - FREQTRADE__API_SERVER__USERNAME=${FREQTRADE_USERNAME:-freqtrader}
-      - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_1:-SuperSecret1!}
-      - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
-      - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
-      # Exchange Configuration (Binance)
-      - FREQTRADE__EXCHANGE__NAME=${FREQTRADE_EXCHANGE_NAME:-binance}
-      - FREQTRADE__EXCHANGE__KEY=${FREQTRADE_EXCHANGE_KEY_1:-}
-      - FREQTRADE__EXCHANGE__SECRET=${FREQTRADE_EXCHANGE_SECRET_1:-}
-      # Trading Configuration
-      - FREQTRADE__DRY_RUN=${FREQTRADE_DRY_RUN:-true}
-      - FREQTRADE__DRY_RUN_WALLET=${FREQTRADE_DRY_RUN_WALLET:-1000}
-      - FREQTRADE__STRATEGY=${FREQTRADE_STRATEGY_1:-SampleStrategy}
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
@@ -163,23 +153,6 @@ services:
       - ./freqtrade-data-2:/freqtrade/user_data
     ports:
       - "8081:8080"  # Different port for second instance
-    environment:
-      # API Server Configuration
-      - FREQTRADE__API_SERVER__ENABLED=true
-      - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
-      - FREQTRADE__API_SERVER__LISTEN_PORT=8080
-      - FREQTRADE__API_SERVER__USERNAME=${FREQTRADE_USERNAME:-freqtrader}
-      - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_2:-SuperSecret2!}
-      - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
-      - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
-      # Exchange Configuration (Binance)
-      - FREQTRADE__EXCHANGE__NAME=${FREQTRADE_EXCHANGE_NAME:-binance}
-      - FREQTRADE__EXCHANGE__KEY=${FREQTRADE_EXCHANGE_KEY_2:-}
-      - FREQTRADE__EXCHANGE__SECRET=${FREQTRADE_EXCHANGE_SECRET_2:-}
-      # Trading Configuration
-      - FREQTRADE__DRY_RUN=${FREQTRADE_DRY_RUN:-true}
-      - FREQTRADE__DRY_RUN_WALLET=${FREQTRADE_DRY_RUN_WALLET:-1000}
-      - FREQTRADE__STRATEGY=${FREQTRADE_STRATEGY_2:-SampleStrategy}
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log
@@ -204,23 +177,6 @@ services:
       - ./freqtrade-data-3:/freqtrade/user_data
     ports:
       - "8082:8080"  # Different port for third instance
-    environment:
-      # API Server Configuration
-      - FREQTRADE__API_SERVER__ENABLED=true
-      - FREQTRADE__API_SERVER__LISTEN_IP_ADDRESS=0.0.0.0
-      - FREQTRADE__API_SERVER__LISTEN_PORT=8080
-      - FREQTRADE__API_SERVER__USERNAME=${FREQTRADE_USERNAME:-freqtrader}
-      - FREQTRADE__API_SERVER__PASSWORD=${FREQTRADE_PASSWORD_3:-SuperSecret3!}
-      - FREQTRADE__API_SERVER__JWT_SECRET_KEY=${FREQTRADE_JWT_SECRET:-change-this-jwt-secret-key-in-production}
-      - FREQTRADE__API_SERVER__CORS_ORIGINS=["http://localhost:3000","http://localhost:3001"]
-      # Exchange Configuration (Binance)
-      - FREQTRADE__EXCHANGE__NAME=${FREQTRADE_EXCHANGE_NAME:-binance}
-      - FREQTRADE__EXCHANGE__KEY=${FREQTRADE_EXCHANGE_KEY_3:-}
-      - FREQTRADE__EXCHANGE__SECRET=${FREQTRADE_EXCHANGE_SECRET_3:-}
-      # Trading Configuration
-      - FREQTRADE__DRY_RUN=${FREQTRADE_DRY_RUN:-true}
-      - FREQTRADE__DRY_RUN_WALLET=${FREQTRADE_DRY_RUN_WALLET:-1000}
-      - FREQTRADE__STRATEGY=${FREQTRADE_STRATEGY_3:-SampleStrategy}
     command: >
       trade
       --logfile /freqtrade/user_data/logs/freqtrade.log

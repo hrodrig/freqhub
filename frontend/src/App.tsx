@@ -25,12 +25,16 @@ import { DashboardMock } from './pages/DashboardMock.js';
 import { BotManagement } from './pages/BotManagement.js';
 import { BotDetail } from './pages/BotDetail.js';
 import { BotComparison } from './pages/BotComparison.js';
+import { ConfigManagement } from './pages/ConfigManagement.js';
 import { Login } from './pages/Login.js';
 import { AuditLogs } from './pages/AuditLogs.js';
 import { Profile } from './pages/Profile.js';
 import { UserManagement } from './pages/UserManagement.js';
 import { useUIStore } from './stores/uiStore.js';
 import { Moon, Sun } from 'lucide-react';
+import packageJson from '../package.json';
+
+const appVersion = packageJson.version;
 
 function Navigation() {
   const { user, logout } = useAuth();
@@ -45,7 +49,21 @@ function Navigation() {
   };
 
   return (
-    <nav style={{ marginBottom: '20px', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <nav
+      style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        background: 'hsl(var(--background))',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+        marginBottom: '20px',
+        borderBottom: '1px solid hsl(var(--border))',
+        padding: '10px 20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+      }}
+    >
       <div>
         <Link to="/dashboard" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Dashboard
@@ -55,6 +73,9 @@ function Navigation() {
         </Link>
         <Link to="/compare" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Compare
+        </Link>
+        <Link to="/configs" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
+          Configs
         </Link>
         {(user?.role === 'superadmin' || user?.role === 'auditor') && (
           <Link to="/audit" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
@@ -93,11 +114,11 @@ function Navigation() {
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'hsl(var(--secondary))';
           }}
-          title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          {theme === 'dark' ? 'Claro' : 'Oscuro'}
+          {theme === 'dark' ? 'Light' : 'Dark'}
         </button>
         {user && (
           <Link
@@ -145,59 +166,89 @@ function Navigation() {
 function AppRoutes() {
   return (
     <BrowserRouter basename={config.basePath}>
-      <div style={{ padding: '20px' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <PrivateRoute>
           <Navigation />
         </PrivateRoute>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={
-            <PrivateRoute>
-              <Navigate to="/dashboard" replace />
-            </PrivateRoute>
-          } />
-          <Route path="/dashboard" element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          } />
-          <Route path="/mock" element={
-            <PrivateRoute>
-              <DashboardMock />
-            </PrivateRoute>
-          } />
-          <Route path="/bots" element={
-            <PrivateRoute>
-              <BotManagement />
-            </PrivateRoute>
-          } />
-          <Route path="/bots/:id" element={
-            <PrivateRoute>
-              <BotDetail />
-            </PrivateRoute>
-          } />
-          <Route path="/compare" element={
-            <PrivateRoute>
-              <BotComparison />
-            </PrivateRoute>
-          } />
-          <Route path="/audit" element={
-            <PrivateRoute requiredRole="auditor">
-              <AuditLogs />
-            </PrivateRoute>
-          } />
-          <Route path="/profile" element={
-            <PrivateRoute>
-              <Profile />
-            </PrivateRoute>
-          } />
-          <Route path="/users" element={
-            <PrivateRoute requiredRole="superadmin">
-              <UserManagement />
-            </PrivateRoute>
-          } />
-          <Route path="*" element={<div>404 - Not Found</div>} />
-        </Routes>
+        <div style={{ padding: '20px', flex: 1 }}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={
+              <PrivateRoute>
+                <Navigate to="/dashboard" replace />
+              </PrivateRoute>
+            } />
+            <Route path="/dashboard" element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            } />
+            <Route path="/mock" element={
+              <PrivateRoute>
+                <DashboardMock />
+              </PrivateRoute>
+            } />
+            <Route path="/bots" element={
+              <PrivateRoute>
+                <BotManagement />
+              </PrivateRoute>
+            } />
+            <Route path="/bots/:id" element={
+              <PrivateRoute>
+                <BotDetail />
+              </PrivateRoute>
+            } />
+            <Route path="/compare" element={
+              <PrivateRoute>
+                <BotComparison />
+              </PrivateRoute>
+            } />
+            <Route path="/configs" element={
+              <PrivateRoute>
+                <ConfigManagement />
+              </PrivateRoute>
+            } />
+            <Route path="/audit" element={
+              <PrivateRoute requiredRole="auditor">
+                <AuditLogs />
+              </PrivateRoute>
+            } />
+            <Route path="/profile" element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            } />
+            <Route path="/users" element={
+              <PrivateRoute requiredRole="superadmin">
+                <UserManagement />
+              </PrivateRoute>
+            } />
+            <Route path="*" element={<div>404 - Not Found</div>} />
+          </Routes>
+        </div>
+        <footer
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            width: '100%',
+            borderTop: '1px solid hsl(var(--border))',
+            background: 'hsl(var(--background))',
+            padding: '12px 20px',
+            textAlign: 'center',
+            color: 'hsl(var(--muted-foreground))',
+            fontSize: '0.875rem',
+          }}
+        >
+          <span>FreqHub v{appVersion}. All Rights Reserved. </span>
+          <a
+            href="https://github.com/hrodrig/freqhub"
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: 'hsl(var(--foreground))', textDecoration: 'none' }}
+          >
+            GitHub
+          </a>
+        </footer>
       </div>
     </BrowserRouter>
   );

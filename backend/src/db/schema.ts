@@ -25,6 +25,7 @@ export interface BotDB {
   name: string;
   api_url: string;
   ws_url: string | null;
+  agent_url?: string | null;
   username: string;
   encrypted_password: string;
   access_token: string | null;
@@ -32,6 +33,8 @@ export interface BotDB {
   is_enabled: number; // 1 = true, 0 = false
   is_selected: number; // 1 = true, 0 = false
   notes: string | null;
+  configmap_name?: string | null;
+  config_path?: string | null;
   created_by: string | null;
   updated_by: string | null;
   created_at: number;
@@ -44,6 +47,7 @@ export const createBotsTable = `
     name TEXT NOT NULL,
     api_url TEXT NOT NULL,
     ws_url TEXT,
+    agent_url TEXT,
     username TEXT NOT NULL,
     encrypted_password TEXT NOT NULL,
     access_token TEXT,
@@ -51,6 +55,8 @@ export const createBotsTable = `
     is_enabled INTEGER DEFAULT 1,
     is_selected INTEGER DEFAULT 0,
     notes TEXT,
+    configmap_name TEXT,
+    config_path TEXT,
     created_by TEXT,
     updated_by TEXT,
     created_at INTEGER NOT NULL,
