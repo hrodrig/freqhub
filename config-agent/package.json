@@ -1,6 +1,6 @@
 {
   "name": "freqhub-config-agent",
-  "version": "0.2.20",
+  "version": "0.2.22",
   "description": "Sidecar agent for FreqHub bot configuration management",
   "type": "module",
   "main": "dist/app.js",

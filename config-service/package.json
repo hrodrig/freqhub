@@ -1,6 +1,6 @@
 {
   "name": "freqhub-config-service",
-  "version": "0.2.20",
+  "version": "0.2.22",
   "description": "Centralized configuration management service for FreqHub bots",
   "type": "module",
   "main": "dist/app.js",

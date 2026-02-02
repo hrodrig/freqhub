@@ -22,6 +22,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useBotStore } from '../stores/botStore.js';
 import { botApi, proxyApi } from '../services/api/endpoints.js';
 import { useAuth } from '../contexts/AuthContext.js';
+import { config } from '../config/env.js';
 import type { BotImportResult, CreateBotRequest, UpdateBotRequest } from '../types/bot.js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
 
@@ -39,6 +40,7 @@ export function BotManagement() {
     wsUrl: '',
     username: '',
     password: '',
+    notes: '',
     configMapName: '',
     configPath: '',
     agentUrl: '',
@@ -149,6 +151,7 @@ export function BotManagement() {
           apiUrl: formData.apiUrl,
           wsUrl: formData.wsUrl || undefined,
           username: formData.username,
+          notes: formData.notes,
           isEnabled: formData.isEnabled,
           agentUrl: formData.agentUrl || undefined,
           configMapName: formData.configMapName,
@@ -168,6 +171,7 @@ export function BotManagement() {
           wsUrl: formData.wsUrl || undefined,
           username: formData.username,
           password: formData.password,
+          notes: formData.notes,
           agentUrl: formData.agentUrl || undefined,
           configMapName: formData.configMapName,
           configPath: formData.configPath,
@@ -182,6 +186,7 @@ export function BotManagement() {
         wsUrl: '',
         username: '',
         password: '',
+        notes: '',
         configMapName: '',
         configPath: '',
         agentUrl: '',
@@ -195,23 +200,21 @@ export function BotManagement() {
     }
   };
 
-  const checkBotStopped = useCallback(async (botId: string, actionLabel: 'editar' | 'eliminar') => {
+  const checkBotStopped = useCallback(async (botId: string, actionLabel: 'edit' | 'delete') => {
     setStatusChecking((prev) => ({ ...prev, [botId]: true }));
     try {
       const config = await proxyApi.get(botId, 'api/v1/show_config') as { state?: string } | null;
       const state = config?.state?.toUpperCase();
       if (!state) {
-        alert(`No se pudo verificar el estado del bot. Detén el bot antes de ${actionLabel}.`);
-        return false;
+        return confirm(`Unable to verify bot state. Do you want to ${actionLabel} anyway?`);
       }
       if (state !== 'STOPPED') {
-        alert(`El bot debe estar detenido para poder ${actionLabel}.`);
+        alert(`The bot must be stopped before you can ${actionLabel}.`);
         return false;
       }
       return true;
     } catch (err) {
-      alert(`No se pudo verificar el estado del bot. Detén el bot antes de ${actionLabel}.`);
-      return false;
+      return confirm(`Unable to verify bot state. Do you want to ${actionLabel} anyway?`);
     } finally {
       setStatusChecking((prev) => ({ ...prev, [botId]: false }));
     }
@@ -233,7 +236,7 @@ export function BotManagement() {
       setError('Read-only: auditors cannot edit bots.');
       return;
     }
-    const canEdit = await checkBotStopped(bot.id, 'editar');
+    const canEdit = await checkBotStopped(bot.id, 'edit');
     if (!canEdit) return;
     setEditingBot(bot.id);
     setFormData({
@@ -242,6 +245,7 @@ export function BotManagement() {
       wsUrl: bot.wsUrl || '',
       username: bot.username,
       password: '', // Don't pre-fill password
+      notes: bot.notes || '',
       configMapName: bot.configMapName || '',
       configPath: bot.configPath || '',
       agentUrl: bot.agentUrl || '',
@@ -272,6 +276,7 @@ export function BotManagement() {
       wsUrl: '',
       username: '',
       password: '',
+      notes: '',
       configMapName: '',
       configPath: '',
       agentUrl: '',
@@ -280,7 +285,7 @@ export function BotManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    const canDelete = await checkBotStopped(id, 'eliminar');
+    const canDelete = await checkBotStopped(id, 'delete');
     if (!canDelete) return;
     if (confirm('Are you sure you want to delete this bot?')) {
       try {
@@ -292,7 +297,8 @@ export function BotManagement() {
     }
   };
 
-  const templateDownloadUrl = '/freqhub_example_bots_list.xlsx';
+  const templateBasePath = config.basePath.replace(/\/?$/, '/');
+  const templateDownloadUrl = `${templateBasePath}freqhub_example_bots_list.xlsx`;
 
   const handleImportClick = () => {
     if (user?.role === 'auditor') return;
@@ -575,6 +581,18 @@ export function BotManagement() {
                       )}
                     </button>
                   </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    value={formData.notes || ''}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    placeholder="Add notes about this bot (e.g., strategy, configuration, etc.)"
+                    rows={3}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -876,7 +894,7 @@ export function BotManagement() {
                                 className="p-2 text-primary hover:bg-primary/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={
                                   statusChecking[bot.id]
-                                    ? 'Verificando estado del bot...'
+                                    ? 'Checking bot state...'
                                     : user?.role === 'auditor'
                                     ? 'Read-only: auditors cannot edit bots.'
                                     : 'Edit Bot'
@@ -892,7 +910,7 @@ export function BotManagement() {
                                 onClick={() => void handleDelete(bot.id)}
                                 disabled={statusChecking[bot.id]}
                                 className="p-2 text-red-500 hover:bg-red-500/20 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={statusChecking[bot.id] ? 'Verificando estado del bot...' : 'Delete Bot'}
+                                title={statusChecking[bot.id] ? 'Checking bot state...' : 'Delete Bot'}
                               >
                                 {statusChecking[bot.id] ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />

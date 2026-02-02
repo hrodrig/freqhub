@@ -38,8 +38,8 @@
 #   FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:latest
 #   FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:latest
 # Example:
-#   FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.0
-#   FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.0
+#   FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.22
+#   FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.22
 #   docker-compose -f docker-compose.published.yml up -d
 
 name: freqhub-stack

@@ -114,11 +114,11 @@ function Navigation() {
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'hsl(var(--secondary))';
           }}
-          title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-          {theme === 'dark' ? 'Claro' : 'Oscuro'}
+          {theme === 'dark' ? 'Light' : 'Dark'}
         </button>
         {user && (
           <Link

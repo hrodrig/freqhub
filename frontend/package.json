@@ -1,6 +1,6 @@
 {
   "name": "freqhub-frontend",
-  "version": "0.2.20",
+  "version": "0.2.22",
   "type": "module",
   "scripts": {
     "dev": "vite",

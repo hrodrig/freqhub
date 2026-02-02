@@ -19,7 +19,7 @@
 # FreqHub
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.2.11-blue.svg)](https://github.com/hrodrig/freqhub/releases)
+[![Version](https://img.shields.io/badge/version-0.2.22-blue.svg)](https://github.com/hrodrig/freqhub/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
@@ -27,29 +27,29 @@
 
 ## 📦 Version
 
-**Current Version: 0.2.11**
+**Current Version: 0.2.22**
 
-### What's New in 0.2.11
+### What's New in 0.2.22
 
-This release focuses on **security hardening, operational safety, and observability**:
+This release focuses on **bulk bot management and agent integration**:
 
-- **🔒 Production hardening**:
-  - SSRF protection for bot API/WebSocket URLs (blocks localhost/private targets)
-  - Swagger disabled by default in production
-  - Health detail endpoints restricted to `superadmin`/`auditor`
-  - Auth lockout support and bootstrap admin configuration
-  - Auditor read-only UI for bot management and chat commands
+- **📦 XLSX import/export**:
+  - Download a template and bulk import bot definitions
+  - Export current bots for auditing or reuse
 
-- **🛡️ Nginx security defaults**:
-  - Rate limiting for API routes
-  - Security headers + CSP (Report-Only)
-  - Dotfiles blocked and static asset caching
+- **🔗 Agent URL support**:
+  - Store agent URLs per bot and use them for config workflows
+  - Conflict detection for shared agent URLs
 
-- **📈 Observability**:
-  - Timestamped logs in backend and frontend (WebSocket)
-  - WebSocket auth token support for subscriptions
+- **🧭 Bot management upgrades**:
+  - Searchable, sortable table with pagination
+  - Notes are editable again
+  - Safer edit/delete flow when bot state is unknown
 
-For complete details, see the [CHANGELOG.md](CHANGELOG.md#0211---2026-01-24).
+- **🧰 Tooling updates**:
+  - `freqhub build` now builds config-agent and config-service
+
+For complete details, see the [CHANGELOG.md](CHANGELOG.md#0222---2026-02-01).
 
 ### Previous Features
 
@@ -153,8 +153,8 @@ If you just want to use FreqHub without modifying the code, use Docker with pre-
 docker compose -f docker-compose.published.yml up -d
 
 # Or with custom image tags
-FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.8 \
-FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.8 \
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.22 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.22 \
 docker compose -f docker-compose.published.yml up -d
 ```
 
@@ -330,8 +330,8 @@ npm run build
 docker compose -f docker-compose.published.yml up -d
 
 # Or with custom image tags
-FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.8 \
-FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.8 \
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.22 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.22 \
 docker compose -f docker-compose.published.yml up -d
 ```
 

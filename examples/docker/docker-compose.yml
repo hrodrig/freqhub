@@ -40,7 +40,7 @@
 # Example:
 #   export IMAGE_REGISTRY=docker.io
 #   export IMAGE_USERNAME=your-username
-#   export IMAGE_VERSION=v0.2.0
+#   export IMAGE_VERSION=v0.2.22
 #   docker compose up -d
 
 name: freqhub-stack
