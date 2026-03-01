@@ -19,7 +19,7 @@
 # FreqHub
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.2.22-blue.svg)](https://github.com/hrodrig/freqhub/releases)
+[![Version](https://img.shields.io/badge/version-0.2.23-blue.svg)](https://github.com/hrodrig/freqhub/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
@@ -27,11 +27,19 @@
 
 ## 📦 Version
 
-**Current Version: 0.2.22**
+**Current Version: 0.2.23**
+
+### What's New in 0.2.23
+
+This release addresses **Code scanning (CodeQL) security alerts**:
+
+- **Security (SSRF):** Validated all user- and config-controlled inputs used in outgoing HTTP requests. config-service: safe ID and URL validation (`requestSecurity.ts`). backend: proxy path restricted to `/api/v1/` with no path traversal. Resolves CodeQL "Server-side request forgery" findings.
+
+For complete details, see [CHANGELOG.md](CHANGELOG.md#0223---2026-02-26).
 
 ### What's New in 0.2.22
 
-This release focuses on **bulk bot management and agent integration**:
+That release focused on **bulk bot management and agent integration**:
 
 - **📦 XLSX import/export**:
   - Download a template and bulk import bot definitions
@@ -49,7 +57,7 @@ This release focuses on **bulk bot management and agent integration**:
 - **🧰 Tooling updates**:
   - `freqhub build` now builds config-agent and config-service
 
-For complete details, see the [CHANGELOG.md](CHANGELOG.md#0222---2026-02-01).
+For complete details, see the [CHANGELOG.md](CHANGELOG.md#0222---2026-02-01) (0.2.22 section).
 
 ### Previous Features
 

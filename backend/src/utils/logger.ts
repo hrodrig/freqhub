@@ -39,15 +39,20 @@ function shouldLog(level: LogLevel): boolean {
   return LOG_LEVELS[level] <= currentLogLevel;
 }
 
+/** Sanitize args for logging: do not log full Error objects (stack, etc.) or other sensitive data */
+function sanitizeArgs(args: unknown[]): unknown[] {
+  return args.map((a) => (a instanceof Error ? a.message : a));
+}
+
 export const appLogger = {
   error: (message: string, ...args: unknown[]): void => {
     if (shouldLog('error')) {
-      console.error(formatMessage('error', message), ...args);
+      console.error(formatMessage('error', message), ...sanitizeArgs(args));
     }
   },
   warn: (message: string, ...args: unknown[]): void => {
     if (shouldLog('warn')) {
-      console.warn(formatMessage('warn', message), ...args);
+      console.warn(formatMessage('warn', message), ...sanitizeArgs(args));
     }
   },
   info: (message: string, ...args: unknown[]): void => {

@@ -15,6 +15,7 @@ import { markAsDeployed } from './config.service.js';
 import { getVersion } from './version.service.js';
 import { env, getAgentUrls } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { validateSafeId, validateAgentUrl } from '../utils/requestSecurity.js';
 import type { Deployment, DeployRequest } from '../types/models.js';
 import type { FreqtradeConfig } from '../types/freqtrade.js';
 
@@ -35,6 +36,7 @@ interface DeployResult {
  * Get bot credentials from FreqHub Backend
  */
 async function getBotCredentials(botId: string): Promise<BotCredentials | null> {
+  validateSafeId(botId);
   try {
     const response = await axios.get(`${env.FREQHUB_BACKEND_URL}/api/bots/${botId}/credentials`, {
       headers: {
@@ -54,6 +56,7 @@ async function getBotCredentials(botId: string): Promise<BotCredentials | null> 
  * Authenticate with Freqtrade bot and get token
  */
 async function authenticateWithBot(apiUrl: string, username: string, password: string): Promise<string | null> {
+  validateAgentUrl(apiUrl);
   try {
     const response = await axios.post(
       `${apiUrl}/api/v1/token/login`,
@@ -79,6 +82,8 @@ async function deployViaAgent(
   botName: string,
   config: FreqtradeConfig
 ): Promise<{ success: boolean; response?: Record<string, unknown>; error?: string }> {
+  validateAgentUrl(agentUrl);
+  validateSafeId(botName);
   try {
     const response = await axios.put(`${agentUrl}/bots/${botName}/config`, config, {
       headers: {
@@ -102,6 +107,7 @@ async function triggerReloadConfig(
   apiUrl: string,
   token: string
 ): Promise<{ success: boolean; response?: Record<string, unknown>; error?: string }> {
+  validateAgentUrl(apiUrl);
   try {
     const response = await axios.post(
       `${apiUrl}/api/v1/reload_config`,
@@ -125,6 +131,7 @@ async function triggerReloadConfig(
  * Deploy config to a bot
  */
 export async function deployConfig(botId: string, request: DeployRequest, userId?: string): Promise<DeployResult> {
+  validateSafeId(botId);
   const deploymentsCollection = getDeploymentsCollection();
   const botConfigsCollection = getBotConfigsCollection();
 

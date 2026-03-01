@@ -11,6 +11,7 @@
 import axios from 'axios';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { validateAgentUrl } from '../utils/requestSecurity.js';
 import type { FreqtradeConfig } from '../types/freqtrade.js';
 
 export interface AgentHealthResponse {
@@ -41,6 +42,7 @@ export interface PushResult {
  * Check if agent is healthy
  */
 export async function checkAgentHealth(agentUrl: string): Promise<AgentHealthResponse | null> {
+  validateAgentUrl(agentUrl);
   try {
     const response = await axios.get(`${agentUrl}/health`, {
       timeout: 5000,
@@ -56,6 +58,7 @@ export async function checkAgentHealth(agentUrl: string): Promise<AgentHealthRes
  * Pull config from agent (read from bot's filesystem)
  */
 export async function pullConfigFromAgent(agentUrl: string): Promise<PullResult> {
+  validateAgentUrl(agentUrl);
   try {
     logger.info(`Pulling config from agent at ${agentUrl}`);
 
@@ -104,6 +107,7 @@ export async function pushConfigToAgent(
   config: FreqtradeConfig,
   options: { reload?: boolean } = { reload: true }
 ): Promise<PushResult> {
+  validateAgentUrl(agentUrl);
   try {
     logger.info(`Pushing config to agent at ${agentUrl} (reload: ${options.reload})`);
 
@@ -156,6 +160,7 @@ export async function pushConfigToAgent(
  * Trigger reload_config on bot via agent
  */
 export async function reloadViaAgent(agentUrl: string): Promise<{ success: boolean; result?: unknown; error?: string }> {
+  validateAgentUrl(agentUrl);
   try {
     logger.info(`Triggering reload via agent at ${agentUrl}`);
 
@@ -202,6 +207,7 @@ export async function reloadViaAgent(agentUrl: string): Promise<{ success: boole
  * List backups available on agent
  */
 export async function listAgentBackups(agentUrl: string): Promise<{ success: boolean; backups?: Array<{ name: string; path: string }>; error?: string }> {
+  validateAgentUrl(agentUrl);
   try {
     const response = await axios.get(`${agentUrl}/backups`, {
       headers: {

@@ -22,7 +22,7 @@ import { decryptPassword } from './encryptionService.js';
 import { rateLimitService } from './rateLimit.service.js';
 import { env } from '../config/env.js';
 import { appLogger } from '../utils/logger.js';
-import { assertBotApiUrlAllowed } from '../utils/urlSecurity.js';
+import { assertBotApiUrlAllowed, validateProxyPath } from '../utils/urlSecurity.js';
 
 interface FreqtradeLoginResponse {
   access_token: string;
@@ -61,9 +61,19 @@ export async function authenticateBot(
 
     return { token, expiresAt };
   } catch (error) {
-    throw new Error(
-      `Failed to authenticate: ${error instanceof Error ? error.message : 'Unknown error'}`
-    );
+    let detail = 'Unknown error';
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status) {
+        detail = `HTTP ${error.response.status}`;
+      } else if (error.code) {
+        detail = error.code;
+      } else if (error.message) {
+        detail = error.message;
+      }
+    } else if (error instanceof Error && error.message) {
+      detail = error.message;
+    }
+    throw new Error(`Failed to authenticate: ${detail}`);
   }
 }
 
@@ -128,6 +138,7 @@ export async function proxyRequest(
   // SSRF defense-in-depth: block unsafe targets (especially in production),
   // even if a legacy DB entry exists.
   assertBotApiUrlAllowed(bot.api_url);
+  validateProxyPath(path);
 
   // Check rate limit only if not skipped
   // Note: Routes apply rate limit before calling proxyRequest, so skipRateLimit should be true
@@ -248,7 +259,7 @@ export async function proxyRequest(
           );
           updateBotToken(botId, token, expiresAt);
 
-          // Retry request with new token
+          // Retry request with new token (use same validated cleanPath)
           const retryClient = axios.create({
             baseURL: refreshedBot.api_url,
             timeout: 10000,
@@ -258,23 +269,21 @@ export async function proxyRequest(
             },
           });
 
-          // Remove leading slash from path when using baseURL (axios requirement)
-          const retryCleanPath = path.startsWith('/') ? path.substring(1) : path;
           let retryResponse;
           switch (method) {
             case 'GET':
-              retryResponse = await retryClient.get(retryCleanPath);
+              retryResponse = await retryClient.get(cleanPath);
               break;
             case 'POST':
-              retryResponse = await retryClient.post(retryCleanPath, body);
+              retryResponse = await retryClient.post(cleanPath, body);
               invalidateBotCache(botId);
               break;
             case 'PUT':
-              retryResponse = await retryClient.put(retryCleanPath, body);
+              retryResponse = await retryClient.put(cleanPath, body);
               invalidateBotCache(botId);
               break;
             case 'DELETE':
-              retryResponse = await retryClient.delete(retryCleanPath);
+              retryResponse = await retryClient.delete(cleanPath);
               invalidateBotCache(botId);
               break;
           }

@@ -27,9 +27,11 @@ import { rateLimitService } from '../services/rateLimit.service.js';
 import { env } from '../config/env.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/authorize.middleware.js';
+import { healthRateLimiter } from '../middleware/rateLimit.middleware.js';
 
 export function createHealthRouter(): Router {
   const router = express.Router();
+  router.use(healthRateLimiter);
 
   // In production, restrict detailed health endpoints.
   const protectDetailed = env.NODE_ENV === 'production'

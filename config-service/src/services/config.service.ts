@@ -275,8 +275,16 @@ export async function quickEdit(
   // Create partial config update
   const configUpdate: Partial<FreqtradeConfig> = {};
 
-  // Handle nested fields (e.g., 'exchange.name')
+  // Block prototype-polluting keys (CodeQL: prototype-polluting function)
+  const blockedKeys = new Set(['__proto__', 'constructor', 'prototype']);
   const keys = field.split('.');
+  for (const k of keys) {
+    if (blockedKeys.has(k)) {
+      throw new Error(`Invalid field: ${k}`);
+    }
+  }
+
+  // Handle nested fields (e.g., 'exchange.name')
   if (keys.length === 1) {
     (configUpdate as Record<string, unknown>)[field] = value;
   } else {

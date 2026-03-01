@@ -20,6 +20,7 @@ import configsRouter from './routes/configs.js';
 import deploymentsRouter from './routes/deployments.js';
 import syncRouter from './routes/sync.js';
 import healthRouter from './routes/health.js';
+import { configsRateLimiter, syncRateLimiter, healthRateLimiter, deploymentsRateLimiter } from './middleware/rateLimit.js';
 
 const app = express();
 
@@ -33,13 +34,13 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Health routes (no auth)
-app.use('/health', healthRouter);
+// Health routes (no auth, rate limited)
+app.use('/health', healthRateLimiter, healthRouter);
 
-// API routes (with auth)
-app.use('/api/configs', authenticateApiKey, extractUserId, configsRouter);
-app.use('/api/deployments', authenticateApiKey, extractUserId, deploymentsRouter);
-app.use('/api/sync', authenticateApiKey, extractUserId, syncRouter);
+// API routes (with auth, rate limited)
+app.use('/api/configs', configsRateLimiter, authenticateApiKey, extractUserId, configsRouter);
+app.use('/api/deployments', deploymentsRateLimiter, authenticateApiKey, extractUserId, deploymentsRouter);
+app.use('/api/sync', syncRateLimiter, authenticateApiKey, extractUserId, syncRouter);
 
 // 404 handler
 app.use((_req, res) => {

@@ -21,10 +21,12 @@ import { eventBusService } from '../services/eventBus.service.js';
 import { websocketService } from '../services/websocket.service.js';
 import { pollingService } from '../services/polling.service.js';
 import { rateLimitService } from '../services/rateLimit.service.js';
+import { testRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { appLogger } from '../utils/logger.js';
 
 export function createTestRouter(): Router {
   const router = express.Router();
+  router.use(testRateLimiter);
 
   /**
    * @swagger

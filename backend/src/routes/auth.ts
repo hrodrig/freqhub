@@ -21,9 +21,11 @@ import { z } from 'zod';
 import { login, logout, changePassword } from '../services/authService.js';
 import { getUserById, updateUser } from '../services/userService.js';
 import { authenticate } from '../middleware/auth.middleware.js';
+import { authRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { appLogger } from '../utils/logger.js';
 
 const router = Router();
+router.use(authRateLimiter);
 
 // Validation schemas
 const loginSchema = z.object({
