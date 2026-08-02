@@ -574,17 +574,32 @@ export function Dashboard() {
   const enabledBots = useMemo(() => bots.filter((b) => b.isEnabled), [bots]);
   
   // Filter bots by trading mode
+  // Bug fix: an unresolved status (runmode undefined - bot status still loading, or its fetch
+  // failed/timed out) used to default into the "live" tab ("Default to live if unknown") - the
+  // wrong fail-safe direction for a label this consequential. A bot whose status we simply
+  // don't know yet must never be shown as "live trading" it hasn't confirmed. It now appears
+  // in neither tab until its status actually resolves to a real runmode.
   const filteredBots = useMemo(() => {
     return enabledBots.filter((bot) => {
       const status = botStatuses.find((s) => s.botId === bot.id);
       const runmode = status?.status?.runmode;
       if (activeTab === 'live') {
-        return runmode === 'live' || runmode === undefined; // Default to live if unknown
+        return runmode === 'live';
       } else {
         return runmode === 'dry_run';
       }
     });
   }, [enabledBots, botStatuses, activeTab]);
+
+  // Bots whose status hasn't resolved to a known runmode yet - surfaced separately so their
+  // absence from both tabs above is visible/explained rather than silently invisible.
+  const pendingStatusBots = useMemo(() => {
+    return enabledBots.filter((bot) => {
+      const status = botStatuses.find((s) => s.botId === bot.id);
+      const runmode = status?.status?.runmode;
+      return runmode !== 'live' && runmode !== 'dry_run';
+    });
+  }, [enabledBots, botStatuses]);
 
   const totalTrades = useMemo(() => {
     return botStatuses.reduce((sum, s) => {
@@ -754,6 +769,12 @@ export function Dashboard() {
               >
                 🔶 Dry Run
               </button>
+              {pendingStatusBots.length > 0 && (
+                <span className="px-4 py-2 text-xs text-muted-foreground self-center">
+                  {pendingStatusBots.length} bot{pendingStatusBots.length === 1 ? '' : 's'} still
+                  loading status...
+                </span>
+              )}
             </div>
           </CardHeader>
           <CardContent>
