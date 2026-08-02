@@ -160,18 +160,28 @@ export function Dashboard() {
             };
           }
 
-          // Get bot state, open trades, profit, and daily data in parallel (only if bot is online)
-          // Use shorter timeout (5 seconds) for these requests
-          const [configData, openTrades, profit, dailyData] = await Promise.allSettled([
+          // Get bot state, open trades, profit, daily data, and total trade count in parallel
+          // (only if bot is online). Use shorter timeout (5 seconds) for these requests.
+          const [configData, openTrades, profit, dailyData, tradeHistory] = await Promise.allSettled([
             withTimeout(proxyApi.get(bot.id, 'api/v1/show_config'), 5000).catch(() => null),
             withTimeout(proxyApi.get(bot.id, 'api/v1/status'), 5000).catch(() => []),
             withTimeout(proxyApi.get(bot.id, 'api/v1/profit'), 5000).catch(() => null),
             loadDailyData(bot.id).catch(() => []),
+            // Bug fix: trade_count used to come from api/v1/status, which only ever returns
+            // OPEN trades - a bot that has traded and closed everything out was
+            // indistinguishable from one that never traded at all. api/v1/trades (with a
+            // minimal limit=1, since only its total_trades count is needed here, not the full
+            // page of trade objects) reports the real historical total.
+            withTimeout(proxyApi.get(bot.id, 'api/v1/trades?limit=1'), 5000).catch(() => null),
           ]).then((results) =>
             results.map((r) => (r.status === 'fulfilled' ? r.value : null))
           );
 
           const tradesArray = Array.isArray(openTrades) ? openTrades : [];
+          const tradeHistoryData = tradeHistory as { total_trades?: number } | null;
+          const totalTradeCount = typeof tradeHistoryData?.total_trades === 'number'
+            ? tradeHistoryData.total_trades
+            : tradesArray.length; // fall back to open-count only if the history call failed
           const profitData = profit as { profit_closed_coin?: number; profit_closed_percent?: number; winrate?: number } | null;
           const historicalData = dailyData as Array<{ date: string; profit: number }> | null;
           
@@ -209,7 +219,7 @@ export function Dashboard() {
             strategy: strategy,
             timeframe: timeframe,
             stoploss: stoploss,
-            trade_count: tradesArray.length,
+            trade_count: totalTradeCount,
             open_trades: openTradesDetails, // Store trade details
             profit_closed_coin: profitData?.profit_closed_coin,
             profit_closed_percent: profitData?.profit_closed_percent,
@@ -356,17 +366,32 @@ export function Dashboard() {
 
       // Handle different event types
       if (event.type === 'bot_open_trades_update') {
-        // Update bot status from open trades data (Freqtrade /status endpoint)
-        // The data is an array of open trades
-        const trades = Array.isArray(event.data) ? event.data : [];
+        // Update the OPEN positions list from this event (Freqtrade's /status endpoint - open
+        // trades only). Bug fix: this used to also overwrite trade_count with just this
+        // event's open-trade count, silently undoing the real historical total
+        // loadBotStatuses() fetches from api/v1/trades moments later - trade_count is
+        // deliberately NOT touched here, only open_trades.
+        const trades = (Array.isArray(event.data) ? event.data : []) as Array<{
+          is_open?: boolean;
+          pair?: string;
+          open_date?: string;
+          amount?: number;
+        }>;
+        const openTradesDetails = trades
+          .filter((t) => t?.is_open !== false)
+          .map((t) => ({
+            pair: t.pair || 'Unknown',
+            open_date: t.open_date || 'Unknown',
+            amount: t.amount || 0,
+          }));
         const status = {
-          trade_count: trades.length,
+          open_trades: openTradesDetails,
         };
 
         setBotStatuses((prev) => {
           const existing = prev.find((s) => s.botId === event.botId);
           if (existing) {
-            // Update existing status, preserving profit if available
+            // Merge into existing status, preserving every other field (trade_count/profit/etc.)
             return prev.map((s) =>
               s.botId === event.botId
                 ? {
@@ -374,9 +399,6 @@ export function Dashboard() {
                     status: {
                       ...existing.status,
                       ...status,
-                      // Preserve profit from existing status
-                      profit_closed_coin: existing.status?.profit_closed_coin,
-                      profit_closed_percent: existing.status?.profit_closed_percent,
                     },
                     error: undefined,
                   }
