@@ -152,3 +152,37 @@ export const healthApi = {
     return response.data;
   },
 };
+
+/**
+ * Alerts - centralized alerts aggregated from all bot instances' events
+ */
+export interface Alert {
+  id: string;
+  botId: string | null;
+  botName: string | null;
+  severity: 'info' | 'warning' | 'critical';
+  type: string;
+  message: string;
+  isAcknowledged: boolean;
+  createdAt: number;
+}
+
+export const alertsApi = {
+  list: async (params?: { unacknowledgedOnly?: boolean; limit?: number }): Promise<Alert[]> => {
+    const response = await apiClient.get<{ status: string; data: Alert[] }>('/alerts', { params });
+    return response.data.data;
+  },
+
+  acknowledge: async (id: string): Promise<void> => {
+    await apiClient.post(`/alerts/${id}/acknowledge`);
+  },
+
+  acknowledgeAll: async (): Promise<void> => {
+    await apiClient.post('/alerts/acknowledge-all');
+  },
+
+  unacknowledgedCount: async (): Promise<number> => {
+    const response = await apiClient.get<{ status: string; data: { count: number } }>('/alerts/unacknowledged-count');
+    return response.data.data.count;
+  },
+};

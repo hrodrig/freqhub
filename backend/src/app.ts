@@ -30,16 +30,21 @@ import { createTestRouter } from './routes/test.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createAuditRouter } from './routes/audit.js';
 import { createUsersRouter } from './routes/users.js';
+import { createAlertsRouter } from './routes/alerts.js';
 import { getDatabase } from './db/database.js';
 import { swaggerSpec } from './config/swagger.js';
 import { valkeyService } from './services/valkey.service.js';
 import { websocketService } from './services/websocket.service.js';
 import { pollingService } from './services/polling.service.js';
 import { initializeSystem } from './services/init.service.js';
+import { initializeAlertMonitoring } from './services/alertService.js';
 import { appLogger } from './utils/logger.js';
 
 // Initialize database
 getDatabase();
+
+// Start turning bot_offline/new_trade events into persisted, user-facing alerts
+initializeAlertMonitoring();
 
 // Initialize Valkey (will connect if VALKEY_ENABLED=true)
 // The service initializes automatically on import
@@ -118,6 +123,7 @@ app.use(`${basePath}/api/audit`, createAuditRouter());
 app.use(`${basePath}/api/users`, createUsersRouter());
 app.use(`${basePath}/api/bots`, createBotsRouter());
 app.use(`${basePath}/api/bots`, createProxyRouter());
+app.use(`${basePath}/api/alerts`, createAlertsRouter());
 
 // Test routes (only in development)
 if (env.NODE_ENV === 'development') {
