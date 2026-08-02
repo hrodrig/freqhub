@@ -152,3 +152,43 @@ export const healthApi = {
     return response.data;
   },
 };
+
+/**
+ * Backtest Comparison - trigger/poll backtests and compare results across bots
+ */
+export const backtestApi = {
+  start: async (botId: string, params: {
+    timerange?: string;
+    timeframe?: string;
+  }): Promise<{ status: string; running: boolean }> => {
+    const response = await apiClient.post(`/backtest/${botId}/start`, params);
+    return response.data as { status: string; running: boolean };
+  },
+
+  status: async (botId: string): Promise<BacktestStatus> => {
+    const response = await apiClient.get<{ status: string; data: BacktestStatus }>(`/backtest/${botId}/status`);
+    return response.data.data;
+  },
+
+  abort: async (botId: string): Promise<void> => {
+    await apiClient.post(`/backtest/${botId}/abort`);
+  },
+};
+
+export interface BacktestStatus {
+  botId: string;
+  running: boolean;
+  progress?: number;
+  status?: string;
+  results?: {
+    strategy?: string;
+    totalTrades?: number;
+    profitTotalPct?: number;
+    profitTotalAbs?: number;
+    winRate?: number;
+    maxDrawdownPct?: number;
+    backtestStart?: string;
+    backtestEnd?: string;
+  } | null;
+  error?: string;
+}
