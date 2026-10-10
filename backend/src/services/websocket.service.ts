@@ -132,11 +132,15 @@ class WebSocketService {
         socket.emit('unsubscribed', { room: `bot:${botId}` });
       });
 
-      // Global system subscription
+      // System room: admin/auditor only (used for alerts with null bot_id, etc.)
       socket.on('subscribe:system', () => {
         const socketUser = (socket.data as any).user as SocketUser | undefined;
         if (!socketUser) {
           socket.emit('subscription_error', { message: 'Unauthorized' });
+          return;
+        }
+        if (socketUser.role !== 'superadmin' && socketUser.role !== 'auditor') {
+          socket.emit('subscription_error', { message: 'Forbidden' });
           return;
         }
         socket.join('system');
@@ -180,9 +184,14 @@ class WebSocketService {
         this.io.to('system').emit('system_event', event);
       }
       
-      // 4. Critical updates might go to everyone
+      // 4. Alerts/notifications: scoped — never global broadcast (REST ownership parity).
+      //    bot-bound → bot room (subscribers already ownership-checked); null botId → system room.
       if (event.type === 'alert' || event.type === 'notification') {
-        this.io.emit('broadcast_event', event);
+        if (event.botId) {
+          this.io.to(`bot:${event.botId}`).emit('broadcast_event', event);
+        } else {
+          this.io.to('system').emit('broadcast_event', event);
+        }
       }
     });
   }

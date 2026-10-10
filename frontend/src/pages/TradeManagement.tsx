@@ -16,18 +16,30 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBotStore } from '../stores/botStore.js';
-import { tradeManagementApi, type BotActionResult } from '../services/api/endpoints.js';
+import { proxyApi, tradeManagementApi, type BotActionResult } from '../services/api/endpoints.js';
 import { appLogger } from '../utils/logger.js';
 import { TrendingUp, TrendingDown, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/Card';
+
+type Runmode = 'live' | 'dry_run' | 'unknown';
+
+function resolveRunmode(config: { runmode?: string; dry_run?: boolean } | null): Runmode {
+  if (!config) return 'unknown';
+  if (config.runmode === 'live' || config.runmode === 'dry_run') return config.runmode;
+  if (config.dry_run === true) return 'dry_run';
+  if (config.dry_run === false) return 'live';
+  return 'unknown';
+}
 
 export function TradeManagement() {
   const { bots, isLoading: botsLoading, fetchBots } = useBotStore();
   const [selectedBotIds, setSelectedBotIds] = useState<string[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [lastResults, setLastResults] = useState<BotActionResult[] | null>(null);
+  const [runmodes, setRunmodes] = useState<Record<string, Runmode>>({});
+  const [runmodesLoading, setRunmodesLoading] = useState(false);
 
   // Force-enter form state
   const [pair, setPair] = useState('');
@@ -40,7 +52,40 @@ export function TradeManagement() {
     fetchBots();
   }, [fetchBots]);
 
-  const enabledBots = bots.filter((b) => b.isEnabled);
+  const enabledBots = useMemo(() => bots.filter((b) => b.isEnabled), [bots]);
+  const enabledBotIdsKey = useMemo(
+    () => enabledBots.map((b) => b.id).sort().join(','),
+    [enabledBots]
+  );
+
+  const loadRunmodes = useCallback(async (botList: typeof enabledBots) => {
+    if (botList.length === 0) {
+      setRunmodes({});
+      return;
+    }
+    setRunmodesLoading(true);
+    const entries = await Promise.all(
+      botList.map(async (bot) => {
+        try {
+          const config = (await proxyApi.get(bot.id, 'api/v1/show_config')) as {
+            runmode?: string;
+            dry_run?: boolean;
+          } | null;
+          return [bot.id, resolveRunmode(config)] as const;
+        } catch {
+          return [bot.id, 'unknown' as Runmode] as const;
+        }
+      })
+    );
+    setRunmodes(Object.fromEntries(entries));
+    setRunmodesLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (!botsLoading) {
+      void loadRunmodes(enabledBots);
+    }
+  }, [botsLoading, enabledBotIdsKey, enabledBots, loadRunmodes]);
 
   const toggleBot = (botId: string) => {
     setSelectedBotIds((prev) =>
@@ -63,13 +108,22 @@ export function TradeManagement() {
       alert('A pair is required (e.g. BTC/USD).');
       return;
     }
-    const botNames = enabledBots
-      .filter((b) => selectedBotIds.includes(b.id))
-      .map((b) => b.name)
-      .join(', ');
+    const selected = enabledBots.filter((b) => selectedBotIds.includes(b.id));
+    const liveCount = selected.filter((b) => runmodes[b.id] === 'live').length;
+    const botLines = selected
+      .map((b) => {
+        const mode = runmodes[b.id] ?? 'unknown';
+        const label = mode === 'live' ? 'LIVE' : mode === 'dry_run' ? 'dry run' : 'mode unknown';
+        return `- ${b.name} (${label})`;
+      })
+      .join('\n');
     if (
       !confirm(
-        `Force-enter ${pair} on ${selectedBotIds.length} bot(s)?\n\n${botNames}\n\nThis submits a real order on each bot (paper or live, depending on that bot's own dry_run setting).`
+        `Force-enter ${pair} on ${selectedBotIds.length} bot(s)?\n\n${botLines}\n\n${
+          liveCount > 0
+            ? `⚠️ ${liveCount} bot(s) are LIVE — real orders may be placed.`
+            : 'Orders follow each bot dry_run/live setting.'
+        }`
       )
     ) {
       return;
@@ -100,13 +154,22 @@ export function TradeManagement() {
       alert('Select at least one bot first.');
       return;
     }
-    const botNames = enabledBots
-      .filter((b) => selectedBotIds.includes(b.id))
-      .map((b) => b.name)
-      .join(', ');
+    const selected = enabledBots.filter((b) => selectedBotIds.includes(b.id));
+    const liveCount = selected.filter((b) => runmodes[b.id] === 'live').length;
+    const botLines = selected
+      .map((b) => {
+        const mode = runmodes[b.id] ?? 'unknown';
+        const label = mode === 'live' ? 'LIVE' : mode === 'dry_run' ? 'dry run' : 'mode unknown';
+        return `- ${b.name} (${label})`;
+      })
+      .join('\n');
     if (
       !confirm(
-        `Force-exit ALL open positions on ${selectedBotIds.length} bot(s)?\n\n${botNames}\n\nThis closes every currently open trade on each selected bot.`
+        `Force-exit ALL open positions on ${selectedBotIds.length} bot(s)?\n\n${botLines}\n\n${
+          liveCount > 0
+            ? `⚠️ ${liveCount} bot(s) are LIVE — real exits may be placed.`
+            : 'Closes every open trade on each selected bot.'
+        }`
       )
     ) {
       return;
@@ -160,16 +223,29 @@ export function TradeManagement() {
                     />
                     Select all ({enabledBots.length})
                   </label>
-                  {enabledBots.map((bot) => (
-                    <label key={bot.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedBotIds.includes(bot.id)}
-                        onChange={() => toggleBot(bot.id)}
-                      />
-                      {bot.name}
-                    </label>
-                  ))}
+                  {runmodesLoading && (
+                    <p className="text-xs text-muted-foreground mb-2">Loading live/dry status…</p>
+                  )}
+                  {enabledBots.map((bot) => {
+                    const mode = runmodes[bot.id] ?? 'unknown';
+                    return (
+                      <label key={bot.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedBotIds.includes(bot.id)}
+                          onChange={() => toggleBot(bot.id)}
+                        />
+                        <span className="flex-1">{bot.name}</span>
+                        {mode === 'live' ? (
+                          <span className="text-xs text-green-500">💰 Live</span>
+                        ) : mode === 'dry_run' ? (
+                          <span className="text-xs text-yellow-500">🔶 Dry</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Unknown</span>
+                        )}
+                      </label>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

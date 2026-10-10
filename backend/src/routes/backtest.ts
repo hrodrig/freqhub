@@ -19,6 +19,7 @@
 import express, { type Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { proxyRequest } from '../services/proxyService.js';
+import { createAuditLog } from '../services/auditService.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireBotOwnershipOrSuperadmin, requireBotViewAccess } from '../middleware/authorize.middleware.js';
 import { backtestRateLimiter } from '../middleware/rateLimit.middleware.js';
@@ -128,6 +129,20 @@ export function createBacktestRouter(): Router {
         enable_protections: true,
       };
       const result = await proxyRequest(botId, 'POST', 'api/v1/backtest', body, true);
+      if (req.user) {
+        createAuditLog({
+          userId: req.user.id,
+          action: 'backtest_start',
+          actionCategory: 'system_action',
+          resourceType: 'bot',
+          resourceId: botId,
+          details: {
+            strategy: config.strategy,
+            timerange: parsed.data.timerange,
+            timeframe: parsed.data.timeframe,
+          },
+        });
+      }
       res.json({ status: 'success', data: result });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start backtest';
@@ -191,6 +206,15 @@ export function createBacktestRouter(): Router {
     const botId = req.params.id;
     try {
       await proxyRequest(botId, 'GET', 'api/v1/backtest/abort', undefined, true);
+      if (req.user) {
+        createAuditLog({
+          userId: req.user.id,
+          action: 'backtest_abort',
+          actionCategory: 'system_action',
+          resourceType: 'bot',
+          resourceId: botId,
+        });
+      }
       res.json({ status: 'success' });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to abort backtest';

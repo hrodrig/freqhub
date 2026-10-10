@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dependency audit (patch): axios 1.20, express/qs/proxy-addr, multer 2.4, vite 6.4.4, ws 8.21; config-service/agent/message-proxy clean; frontend `dompurify` override 3.4.16; remove unused `http-proxy-middleware` (braces chain).
 - Replace vulnerable `xlsx` (SheetJS) with `exceljs` for bot import/export/template; `uuid` override for exceljs transitive.
 - Alerts API scoped by bot ownership: non–superadmin/auditor users only list/ack/count alerts for bots they own; null `bot_id` alerts are admin/auditor-only.
+- Alerts/notifications over WebSocket no longer global-broadcast; routed to bot room (or system room for null botId). `subscribe:system` restricted to superadmin/auditor.
+- Trade Management UI shows live/dry/unknown badges and warns in confirm when live bots selected.
+- Backtest start/abort write audit logs (`backtest_start`, `backtest_abort`).
+- GitHub Actions CI: build backend + frontend on push/PR to `main`/`develop` (lint deferred — existing ESLint debt).
 
 ## [0.2.23] - 2026-02-26
 
