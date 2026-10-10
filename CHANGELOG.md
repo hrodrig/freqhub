@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trade management: `tradeManagementRateLimiter` (20/min) + `botIds.max(50)`
 - Backtest: `backtestRateLimiter` (30/min)
 - Alerts: `alertsRateLimiter` (60/min) + safe `limit` parse
+- Dependency audit (patch): axios 1.20, express/qs/proxy-addr, multer 2.4, vite 6.4.4, ws 8.21; config-service/agent/message-proxy clean; frontend `dompurify` override 3.4.16; remove unused `http-proxy-middleware` (braces chain). Remaining known: `xlsx` (no upstream fix — see backlog P0-2).
 
 ## [0.2.23] - 2026-02-26
 

@@ -40,5 +40,8 @@
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.2",
     "vite": "^6.0.5"
+  },
+  "overrides": {
+    "dompurify": "3.4.16"
   }
 }
