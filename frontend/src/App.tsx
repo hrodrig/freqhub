@@ -26,6 +26,7 @@ import { BotManagement } from './pages/BotManagement.js';
 import { BotDetail } from './pages/BotDetail.js';
 import { BotComparison } from './pages/BotComparison.js';
 import { TradeManagement } from './pages/TradeManagement.js';
+import { BacktestComparison } from './pages/BacktestComparison.js';
 import { ConfigManagement } from './pages/ConfigManagement.js';
 import { Login } from './pages/Login.js';
 import { AuditLogs } from './pages/AuditLogs.js';
@@ -77,6 +78,9 @@ function Navigation() {
         </Link>
         <Link to="/trade-management" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Trade Management
+        </Link>
+        <Link to="/backtest-comparison" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
+          Backtest Comparison
         </Link>
         <Link to="/configs" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Configs
@@ -210,6 +214,11 @@ function AppRoutes() {
             <Route path="/trade-management" element={
               <PrivateRoute>
                 <TradeManagement />
+              </PrivateRoute>
+            } />
+            <Route path="/backtest-comparison" element={
+              <PrivateRoute>
+                <BacktestComparison />
               </PrivateRoute>
             } />
             <Route path="/configs" element={

@@ -80,3 +80,12 @@ export const tradeManagementRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** Backtest routes: expensive CPU-bound bot work — stricter per-IP cap */
+export const backtestRateLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: 30,
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
