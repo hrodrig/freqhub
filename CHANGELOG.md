@@ -25,11 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.24] - 2026-10-10
+
 ### Added
 - **Bot Comparison**: side-by-side metrics table (strategy, mode, trades, win rate, profit) — PR #5
 - **Trade Management**: bulk force-enter / force-exit-all across selected bots with per-bot ownership checks and audit trail — PR #6
 - **Backtest Comparison**: start/poll/abort Freqtrade backtests and compare results — PR #7
 - **Alert System**: persist `bot_offline` / `new_trade` from event bus; REST + UI + nav badge; migration `010_create_alerts_table.sql` — PR #8
+- Trade Management UI shows live/dry/unknown badges and warns in confirm when live bots selected
+- Backtest start/abort write audit logs (`backtest_start`, `backtest_abort`)
+- GitHub Actions CI: build backend + frontend on push/PR to `main`/`develop`
+- Community docs: `SECURITY.md`, `CONTRIBUTING.md`, `.github/CODEOWNERS`
 
 ### Fixed
 - Dashboard `trade_count` uses historical `api/v1/trades` total (not open-only `/status`); WebSocket open-trades updates no longer clobber count — PR #3
@@ -39,14 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trade management: `tradeManagementRateLimiter` (20/min) + `botIds.max(50)`
 - Backtest: `backtestRateLimiter` (30/min)
 - Alerts: `alertsRateLimiter` (60/min) + safe `limit` parse
-- Dependency audit (patch): axios 1.20, express/qs/proxy-addr, multer 2.4, vite 6.4.4, ws 8.21; config-service/agent/message-proxy clean; frontend `dompurify` override 3.4.16; remove unused `http-proxy-middleware` (braces chain).
-- Replace vulnerable `xlsx` (SheetJS) with `exceljs` for bot import/export/template; `uuid` override for exceljs transitive.
-- Alerts API scoped by bot ownership: non–superadmin/auditor users only list/ack/count alerts for bots they own; null `bot_id` alerts are admin/auditor-only.
-- Alerts/notifications over WebSocket no longer global-broadcast; routed to bot room (or system room for null botId). `subscribe:system` restricted to superadmin/auditor.
-- Trade Management UI shows live/dry/unknown badges and warns in confirm when live bots selected.
-- Backtest start/abort write audit logs (`backtest_start`, `backtest_abort`).
-- GitHub Actions CI: build backend + frontend on push/PR to `main`/`develop` (lint deferred — existing ESLint debt).
-- Community/docs: `SECURITY.md`, `CONTRIBUTING.md`, `.github/CODEOWNERS`.
+- Dependency audit (patch): axios 1.20, express/qs/proxy-addr, multer 2.4, vite 6.4.4, ws 8.21; frontend `dompurify` override 3.4.16; remove unused `http-proxy-middleware`
+- Replace vulnerable `xlsx` (SheetJS) with `exceljs` for bot import/export/template
+- Alerts API scoped by bot ownership; null `bot_id` alerts admin/auditor-only
+- Alerts/notifications over WebSocket scoped to bot/system rooms (no global broadcast)
 
 ## [0.2.23] - 2026-02-26
 
@@ -294,7 +296,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic polling service
 - Rate limiting for API protection
 
-[Unreleased]: https://github.com/hrodrig/freqhub/compare/v0.2.23...HEAD
+[Unreleased]: https://github.com/hrodrig/freqhub/compare/v0.2.24...HEAD
+[0.2.24]: https://github.com/hrodrig/freqhub/compare/v0.2.23...v0.2.24
 [0.2.23]: https://github.com/hrodrig/freqhub/compare/v0.2.22...v0.2.23
 [0.2.22]: https://github.com/hrodrig/freqhub/compare/v0.2.11...v0.2.22
 [0.2.8]: https://github.com/hrodrig/freqhub/compare/v0.2.4...v0.2.8

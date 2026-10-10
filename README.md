@@ -19,7 +19,7 @@
 # FreqHub
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.2.23-blue.svg)](https://github.com/hrodrig/freqhub/releases)
+[![Version](https://img.shields.io/badge/version-0.2.24-blue.svg)](https://github.com/hrodrig/freqhub/releases)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
@@ -27,37 +27,22 @@
 
 ## 📦 Version
 
-**Current Version: 0.2.23**
+**Current Version: 0.2.24**
+
+### What's New in 0.2.24
+
+Roadmap features landed, plus security hardening:
+
+- **Bot Comparison**, **Trade Management**, **Backtest Comparison**, **Alert System** (PRs #5–#8)
+- Dashboard trade-count and Live tab fixes (PRs #3–#4)
+- Dependency audit, `xlsx` → `exceljs`, alerts ownership + scoped WebSocket alerts
+- CI builds, `SECURITY.md` / `CONTRIBUTING.md` / `CODEOWNERS`
+
+For complete details, see [CHANGELOG.md](CHANGELOG.md#0224---2026-10-10).
 
 ### What's New in 0.2.23
 
-This release addresses **Code scanning (CodeQL) security alerts**:
-
-- **Security (SSRF):** Validated all user- and config-controlled inputs used in outgoing HTTP requests. config-service: safe ID and URL validation (`requestSecurity.ts`). backend: proxy path restricted to `/api/v1/` with no path traversal. Resolves CodeQL "Server-side request forgery" findings.
-
-For complete details, see [CHANGELOG.md](CHANGELOG.md#0223---2026-02-26).
-
-### What's New in 0.2.22
-
-That release focused on **bulk bot management and agent integration**:
-
-- **📦 XLSX import/export**:
-  - Download a template and bulk import bot definitions
-  - Export current bots for auditing or reuse
-
-- **🔗 Agent URL support**:
-  - Store agent URLs per bot and use them for config workflows
-  - Conflict detection for shared agent URLs
-
-- **🧭 Bot management upgrades**:
-  - Searchable, sortable table with pagination
-  - Notes are editable again
-  - Safer edit/delete flow when bot state is unknown
-
-- **🧰 Tooling updates**:
-  - `freqhub build` now builds config-agent and config-service
-
-For complete details, see the [CHANGELOG.md](CHANGELOG.md#0222---2026-02-01) (0.2.22 section).
+Code scanning (CodeQL) security alerts: SSRF validation, rate limiting, safer logging. See [CHANGELOG.md](CHANGELOG.md#0223---2026-02-26).
 
 ### Previous Features
 
@@ -162,8 +147,8 @@ If you just want to use FreqHub without modifying the code, use Docker with pre-
 docker compose -f docker-compose.published.yml up -d
 
 # Or with custom image tags
-FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.22 \
-FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.22 \
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.24 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.24 \
 docker compose -f docker-compose.published.yml up -d
 ```
 
@@ -339,8 +324,8 @@ npm run build
 docker compose -f docker-compose.published.yml up -d
 
 # Or with custom image tags
-FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.22 \
-FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.22 \
+FREQHUB_BACKEND_IMAGE=freqhub/freqhub-backend:v0.2.24 \
+FREQHUB_FRONTEND_IMAGE=freqhub/freqhub-frontend:v0.2.24 \
 docker compose -f docker-compose.published.yml up -d
 ```
 
