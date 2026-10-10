@@ -137,9 +137,10 @@ While [FreqUI](https://github.com/freqtrade/frequi) is an excellent single-bot i
 
 - 🔄 **Advanced Security**: 2FA (TOTP), QR Code authentication, session management
 - ✅ **User Management UI**: Frontend interface for user CRUD operations
-- 🔄 **Trade Management**: Execute trades across multiple bots
-- 🔄 **Backtest Comparison**: Compare backtest results across strategies
-- 🔄 **Alert System**: Centralized alerts from all bot instances
+- ✅ **Trade Management**: Execute trades across multiple bots
+- ✅ **Backtest Comparison**: Compare backtest results across strategies
+- ✅ **Alert System**: Centralized alerts from all bot instances
+- ✅ **Bot Comparison**: Side-by-side performance table (was Coming soon)
 
 ## 📋 Prerequisites (For Developers)
 

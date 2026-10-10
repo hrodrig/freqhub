@@ -25,6 +25,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Bot Comparison**: side-by-side metrics table (strategy, mode, trades, win rate, profit) — PR #5
+- **Trade Management**: bulk force-enter / force-exit-all across selected bots with per-bot ownership checks and audit trail — PR #6
+- **Backtest Comparison**: start/poll/abort Freqtrade backtests and compare results — PR #7
+- **Alert System**: persist `bot_offline` / `new_trade` from event bus; REST + UI + nav badge; migration `010_create_alerts_table.sql` — PR #8
+
+### Fixed
+- Dashboard `trade_count` uses historical `api/v1/trades` total (not open-only `/status`); WebSocket open-trades updates no longer clobber count — PR #3
+- Live Trading tab no longer treats unresolved `runmode` as live; shows pending-status count — PR #4
+
+### Security
+- Trade management: `tradeManagementRateLimiter` (20/min) + `botIds.max(50)`
+- Backtest: `backtestRateLimiter` (30/min)
+- Alerts: `alertsRateLimiter` (60/min) + safe `limit` parse
+
 ## [0.2.23] - 2026-02-26
 
 ### Fixed
