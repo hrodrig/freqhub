@@ -213,7 +213,7 @@ export function BotManagement() {
         return false;
       }
       return true;
-    } catch (err) {
+    } catch {
       return confirm(`Unable to verify bot state. Do you want to ${actionLabel} anyway?`);
     } finally {
       setStatusChecking((prev) => ({ ...prev, [botId]: false }));

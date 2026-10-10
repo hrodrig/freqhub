@@ -63,7 +63,7 @@ export function UserManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [userBots, setUserBots] = useState<Record<string, any[]>>({});
+  const [userBots, setUserBots] = useState<Record<string, Array<{ id: string; name: string }>>>({});
 
   useEffect(() => {
     fetchUsers();
@@ -559,7 +559,7 @@ export function UserManagement() {
                           <div style={{ color: '#a0a0a0', fontSize: '0.875rem' }}>No bots assigned</div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                            {userBots[user.id].map((bot: any) => (
+                            {userBots[user.id].map((bot) => (
                               <div key={bot.id} style={{ color: '#e0e0e0', fontSize: '0.875rem' }}>
                                 • {bot.name} ({bot.id.substring(0, 8)}...)
                               </div>

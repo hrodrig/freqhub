@@ -34,7 +34,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { useAuth } from '../contexts/AuthContext.js';
 
 // Monaco Editor - lazy loaded
-import Editor from '@monaco-editor/react';
+import Editor, { type Monaco } from '@monaco-editor/react';
+import type { editor as MonacoEditor } from 'monaco-editor';
 
 type ConfigMode = 'local' | 'service';
 type LocalBotConfig = BotConfig & { agentUrl?: string };
@@ -99,7 +100,7 @@ export function ConfigManagement() {
       setPendingBotId(filteredBots[0].id);
     }
   }, [botSearch, filteredBots]);
-  const setupClipboardShortcuts = (editor: any, monaco: any) => {
+  const setupClipboardShortcuts = (editor: MonacoEditor.IStandaloneCodeEditor, monaco: Monaco) => {
     const writeClipboardText = async (text: string) => {
       if (!text) return;
       try {
@@ -307,6 +308,7 @@ export function ConfigManagement() {
     if (lastAutoLoadedRef.current === onlyBot.id) return;
     lastAutoLoadedRef.current = onlyBot.id;
     handleBotSelect(onlyBot.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- auto-select when search narrows to one bot
   }, [botSearch, filteredBots, selectedBotId]);
 
   // Check if content has changed

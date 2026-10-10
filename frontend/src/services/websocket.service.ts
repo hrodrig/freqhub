@@ -23,7 +23,7 @@ import { appLogger } from '../utils/logger.js';
 export interface FreqHubEvent {
   type: string;
   botId?: string;
-  data?: any;
+  data?: unknown;
   timestamp?: number;
 }
 

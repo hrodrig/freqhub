@@ -53,8 +53,8 @@ import './index.css';
 
       if (typeof media.addEventListener === 'function') {
         media.addEventListener('change', onChange);
-      } else if (typeof (media as any).addListener === 'function') {
-        (media as any).addListener(onChange);
+      } else if ('addListener' in media && typeof media.addListener === 'function') {
+        media.addListener(onChange);
       }
     }
   } catch {

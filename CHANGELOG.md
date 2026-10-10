@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- ESLint errors cleared in backend/frontend; CI runs frontend `lint` and backend `eslint --quiet`
+
 ## [0.2.24] - 2026-10-10
 
 ### Added

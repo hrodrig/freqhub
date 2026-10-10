@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
       setUser(response.data);
-    } catch (error) {
+    } catch {
       // Token invalid, logout
       logout();
     }
@@ -146,6 +146,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Hook co-located with provider (standard React context pattern)
+// eslint-disable-next-line react-refresh/only-export-components -- useAuth pairs with AuthProvider
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

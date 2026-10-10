@@ -205,8 +205,8 @@ export function Dashboard() {
 
           // Extract open trades details for display
           const openTradesDetails = tradesArray
-            .filter((t: any) => t.is_open !== false) // Filter only open trades
-            .map((t: any) => ({
+            .filter((t: { is_open?: boolean; pair?: string; open_date?: string; amount?: number }) => t.is_open !== false)
+            .map((t: { is_open?: boolean; pair?: string; open_date?: string; amount?: number }) => ({
               pair: t.pair || 'Unknown',
               open_date: t.open_date || 'Unknown',
               amount: t.amount || 0,
@@ -249,7 +249,7 @@ export function Dashboard() {
                 return [...prev, status];
               }
             });
-          } catch (err) {
+          } catch {
             // Individual failures are already handled in the promise
           }
         });
@@ -557,6 +557,8 @@ export function Dashboard() {
     return () => {
       unsubscribe();
     };
+    // Mount-only: websocket subscription lifecycle
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper function to normalize bot state (Freqtrade returns lowercase, but we compare uppercase)

@@ -303,7 +303,7 @@ export function BotCommandChat({ botId, botName, readOnly = false }: BotCommandC
           const body = !isNaN(lockId) ? { lockid: lockId } : { pair: arg };
           try {
             await proxyApi.post(botId, 'api/v1/unlock', body);
-          } catch (error) {
+          } catch {
             // If unlock fails (e.g., lock doesn't exist), just show current locks
             // This will show "No active locks." if there are no locks
           }

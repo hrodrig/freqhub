@@ -36,7 +36,7 @@ export function getDatabase(): Database.Database {
   const dbDir = dirname(dbPath);
   try {
     mkdirSync(dbDir, { recursive: true });
-  } catch (error) {
+  } catch {
     // Directory might already exist
   }
 

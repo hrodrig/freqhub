@@ -22,15 +22,13 @@ import { getUserByIdDB } from '../services/userService.js';
 import { appLogger } from '../utils/logger.js';
 
 // Extend Express Request to include user
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        username: string;
-        role: 'superadmin' | 'auditor' | 'user';
-      };
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: {
+      id: string;
+      username: string;
+      role: 'superadmin' | 'auditor' | 'user';
+    };
   }
 }
 

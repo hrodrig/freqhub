@@ -63,6 +63,8 @@ export function AuditLogs() {
 
   useEffect(() => {
     loadLogs();
+    // loadLogs closes over filter state; re-run when filters/page change
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional filter deps only
   }, [currentPage, actionFilter, categoryFilter, resourceTypeFilter]);
 
   const loadLogs = async () => {
