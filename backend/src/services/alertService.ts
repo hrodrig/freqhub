@@ -20,7 +20,30 @@ import { randomUUID } from 'crypto';
 import { getDatabase } from '../db/database.js';
 import { eventBusService, type FreqHubEvent } from './eventBus.service.js';
 import { getBotWithCredentials } from './botService.js';
+import { getBotsOwnedByUser } from './botOwnershipService.js';
 import { appLogger } from '../utils/logger.js';
+
+/** Roles that may see/ack every alert (including bot_id NULL). */
+function canAccessAllAlerts(role: string): boolean {
+  return role === 'superadmin' || role === 'auditor';
+}
+
+export type AlertScope = {
+  role: string;
+  userId: string;
+};
+
+function ownedBotIdsForScope(scope: AlertScope): string[] | null {
+  if (canAccessAllAlerts(scope.role)) return null; // null = unrestricted
+  return getBotsOwnedByUser(scope.userId);
+}
+
+function alertVisibleToScope(alert: Alert, scope: AlertScope): boolean {
+  const owned = ownedBotIdsForScope(scope);
+  if (owned === null) return true;
+  if (!alert.botId) return false;
+  return owned.includes(alert.botId);
+}
 
 export type AlertSeverity = 'info' | 'warning' | 'critical';
 
@@ -121,37 +144,107 @@ export function createAlert(params: {
   return alert;
 }
 
-export function listAlerts(params: { unacknowledgedOnly?: boolean; limit?: number } = {}): Alert[] {
+export function getAlertById(id: string): Alert | null {
+  const db = getDatabase();
+  const row = db.prepare('SELECT * FROM alerts WHERE id = ?').get(id) as AlertRow | undefined;
+  return row ? rowToAlert(row) : null;
+}
+
+export function listAlerts(
+  params: { unacknowledgedOnly?: boolean; limit?: number } & AlertScope
+): Alert[] {
   const db = getDatabase();
   const limit = Math.min(params.limit ?? 100, 500);
-  const where = params.unacknowledgedOnly ? 'WHERE is_acknowledged = 0' : '';
+  const owned = ownedBotIdsForScope(params);
+
+  if (owned !== null && owned.length === 0) {
+    return [];
+  }
+
+  const clauses: string[] = [];
+  const values: unknown[] = [];
+
+  if (params.unacknowledgedOnly) {
+    clauses.push('is_acknowledged = 0');
+  }
+
+  if (owned !== null) {
+    const placeholders = owned.map(() => '?').join(', ');
+    clauses.push(`bot_id IN (${placeholders})`);
+    values.push(...owned);
+  }
+
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+  values.push(limit);
   const rows = db
     .prepare(`SELECT * FROM alerts ${where} ORDER BY created_at DESC LIMIT ?`)
-    .all(limit) as AlertRow[];
+    .all(...values) as AlertRow[];
   return rows.map(rowToAlert);
 }
 
-export function acknowledgeAlert(id: string, userId: string): boolean {
+export type AcknowledgeResult = 'ok' | 'not_found' | 'forbidden';
+
+export function acknowledgeAlert(id: string, scope: AlertScope): AcknowledgeResult {
+  const alert = getAlertById(id);
+  if (!alert) return 'not_found';
+  if (!alertVisibleToScope(alert, scope)) return 'forbidden';
+
   const db = getDatabase();
   const result = db
     .prepare('UPDATE alerts SET is_acknowledged = 1, acknowledged_at = ?, acknowledged_by = ? WHERE id = ?')
-    .run(Date.now(), userId, id);
-  return result.changes > 0;
+    .run(Date.now(), scope.userId, id);
+  return result.changes > 0 ? 'ok' : 'not_found';
 }
 
-export function acknowledgeAllAlerts(userId: string): number {
+export function acknowledgeAllAlerts(scope: AlertScope): number {
   const db = getDatabase();
+  const owned = ownedBotIdsForScope(scope);
+  const now = Date.now();
+
+  if (owned !== null && owned.length === 0) {
+    return 0;
+  }
+
+  if (owned === null) {
+    const result = db
+      .prepare(
+        'UPDATE alerts SET is_acknowledged = 1, acknowledged_at = ?, acknowledged_by = ? WHERE is_acknowledged = 0'
+      )
+      .run(now, scope.userId);
+    return result.changes;
+  }
+
+  const placeholders = owned.map(() => '?').join(', ');
   const result = db
-    .prepare('UPDATE alerts SET is_acknowledged = 1, acknowledged_at = ?, acknowledged_by = ? WHERE is_acknowledged = 0')
-    .run(Date.now(), userId);
+    .prepare(
+      `UPDATE alerts SET is_acknowledged = 1, acknowledged_at = ?, acknowledged_by = ?
+       WHERE is_acknowledged = 0 AND bot_id IN (${placeholders})`
+    )
+    .run(now, scope.userId, ...owned);
   return result.changes;
 }
 
-export function getUnacknowledgedCount(): number {
+export function getUnacknowledgedCount(scope: AlertScope): number {
   const db = getDatabase();
-  const row = db.prepare('SELECT COUNT(*) as count FROM alerts WHERE is_acknowledged = 0').get() as {
-    count: number;
-  };
+  const owned = ownedBotIdsForScope(scope);
+
+  if (owned !== null && owned.length === 0) {
+    return 0;
+  }
+
+  if (owned === null) {
+    const row = db.prepare('SELECT COUNT(*) as count FROM alerts WHERE is_acknowledged = 0').get() as {
+      count: number;
+    };
+    return row.count;
+  }
+
+  const placeholders = owned.map(() => '?').join(', ');
+  const row = db
+    .prepare(
+      `SELECT COUNT(*) as count FROM alerts WHERE is_acknowledged = 0 AND bot_id IN (${placeholders})`
+    )
+    .get(...owned) as { count: number };
   return row.count;
 }
 

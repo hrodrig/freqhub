@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Alerts: `alertsRateLimiter` (60/min) + safe `limit` parse
 - Dependency audit (patch): axios 1.20, express/qs/proxy-addr, multer 2.4, vite 6.4.4, ws 8.21; config-service/agent/message-proxy clean; frontend `dompurify` override 3.4.16; remove unused `http-proxy-middleware` (braces chain).
 - Replace vulnerable `xlsx` (SheetJS) with `exceljs` for bot import/export/template; `uuid` override for exceljs transitive.
+- Alerts API scoped by bot ownership: non–superadmin/auditor users only list/ack/count alerts for bots they own; null `bot_id` alerts are admin/auditor-only.
 
 ## [0.2.23] - 2026-02-26
 
