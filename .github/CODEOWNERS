@@ -1,0 +1,11 @@
+# Default owner for the whole repository
+*       @hrodrig
+
+# Explicit ownership for security-sensitive surfaces
+/.github/                 @hrodrig
+/SECURITY.md              @hrodrig
+/backend/                 @hrodrig
+/frontend/                @hrodrig
+/config-service/          @hrodrig
+/config-agent/            @hrodrig
+/docker/                  @hrodrig

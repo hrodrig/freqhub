@@ -911,25 +911,10 @@ FreqHub is built with:
 
 ## 🤝 Contributing
 
-Contributions are welcome! This project is in early development and we'd love your help.
+Contributions are welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for workflow, PR expectations, and branch strategy.
 
-### Code of Conduct
-
-This project adheres to a [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch from `develop`
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request to `develop`
-
-### Branch Strategy
-
-- `main`: Production-ready code
-- `develop`: Development branch (default)
-- Feature branches: `feature/your-feature-name`
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md) — private vulnerability reporting
 
 ## 📝 License
 

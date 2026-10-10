@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Trade Management UI shows live/dry/unknown badges and warns in confirm when live bots selected.
 - Backtest start/abort write audit logs (`backtest_start`, `backtest_abort`).
 - GitHub Actions CI: build backend + frontend on push/PR to `main`/`develop` (lint deferred — existing ESLint debt).
+- Community/docs: `SECURITY.md`, `CONTRIBUTING.md`, `.github/CODEOWNERS`.
 
 ## [0.2.23] - 2026-02-26
 
