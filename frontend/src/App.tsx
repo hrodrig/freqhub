@@ -16,8 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { config } from './config/env.js';
+import { alertsApi } from './services/api/endpoints.js';
 import { AuthProvider, useAuth } from './contexts/AuthContext.js';
 import { PrivateRoute } from './components/PrivateRoute.js';
 import { Dashboard } from './pages/Dashboard.js';
@@ -27,6 +29,7 @@ import { BotDetail } from './pages/BotDetail.js';
 import { BotComparison } from './pages/BotComparison.js';
 import { TradeManagement } from './pages/TradeManagement.js';
 import { BacktestComparison } from './pages/BacktestComparison.js';
+import { Alerts } from './pages/Alerts.js';
 import { ConfigManagement } from './pages/ConfigManagement.js';
 import { Login } from './pages/Login.js';
 import { AuditLogs } from './pages/AuditLogs.js';
@@ -42,6 +45,27 @@ function Navigation() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { theme, setTheme } = useUIStore();
+  const [unacknowledgedAlerts, setUnacknowledgedAlerts] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      alertsApi
+        .unacknowledgedCount()
+        .then((count) => {
+          if (!cancelled) setUnacknowledgedAlerts(count);
+        })
+        .catch(() => {
+          // Silent - nav badge is a nice-to-have, not worth surfacing an error for
+        });
+    };
+    poll();
+    const interval = setInterval(poll, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -81,6 +105,23 @@ function Navigation() {
         </Link>
         <Link to="/backtest-comparison" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Backtest Comparison
+        </Link>
+        <Link to="/alerts" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
+          Alerts{unacknowledgedAlerts > 0 && (
+            <span
+              style={{
+                marginLeft: '6px',
+                background: '#ef4444',
+                color: 'white',
+                borderRadius: '9999px',
+                padding: '1px 7px',
+                fontSize: '11px',
+                fontWeight: 600,
+              }}
+            >
+              {unacknowledgedAlerts}
+            </span>
+          )}
         </Link>
         <Link to="/configs" style={{ marginRight: '20px', color: 'hsl(var(--foreground))', textDecoration: 'none' }}>
           Configs
@@ -219,6 +260,11 @@ function AppRoutes() {
             <Route path="/backtest-comparison" element={
               <PrivateRoute>
                 <BacktestComparison />
+              </PrivateRoute>
+            } />
+            <Route path="/alerts" element={
+              <PrivateRoute>
+                <Alerts />
               </PrivateRoute>
             } />
             <Route path="/configs" element={

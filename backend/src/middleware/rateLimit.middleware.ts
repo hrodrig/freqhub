@@ -89,3 +89,12 @@ export const backtestRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** Alerts routes: list/ack + nav badge polling */
+export const alertsRateLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: 60,
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
