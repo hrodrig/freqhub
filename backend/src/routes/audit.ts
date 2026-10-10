@@ -21,9 +21,11 @@ import { z } from 'zod';
 import { getAuditLogs, getResourceHistory, getAuditLogCount, createAuditLog } from '../services/auditService.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/authorize.middleware.js';
+import { auditRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { appLogger } from '../utils/logger.js';
 
 const router = Router();
+router.use(auditRateLimiter);
 
 // All routes require authentication and superadmin/auditor role
 router.use(authenticate);

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { randomBytes } from 'crypto';
+import { randomInt } from 'crypto';
 import { getDatabase } from '../db/database.js';
 import { createUser } from './userService.js';
 import { createAuditLog } from './auditService.js';
@@ -124,10 +124,9 @@ export async function initializeSystem(): Promise<void> {
 function generateSecurePassword(): string {
   const length = 16;
   const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-  const randomBytesBuffer = randomBytes(length);
   let password = '';
   for (let i = 0; i < length; i++) {
-    password += charset[randomBytesBuffer[i] % charset.length];
+    password += charset[randomInt(0, charset.length)];
   }
   return password;
 }

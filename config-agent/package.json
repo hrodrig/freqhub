@@ -1,6 +1,6 @@
 {
   "name": "freqhub-config-agent",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "description": "Sidecar agent for FreqHub bot configuration management",
   "type": "module",
   "main": "dist/app.js",
@@ -15,7 +15,8 @@
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

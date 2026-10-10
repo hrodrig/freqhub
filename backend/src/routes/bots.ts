@@ -34,6 +34,7 @@ import { createAuditLog } from '../services/auditService.js';
 import type { CreateBotRequest, UpdateBotRequest } from '../models/Bot.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireBotOwnershipOrSuperadmin, requireBotViewAccess } from '../middleware/authorize.middleware.js';
+import { botsRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { getBotsOwnedByUser } from '../services/botOwnershipService.js';
 import { assignBotOwnership } from '../services/botOwnershipService.js';
 import { validateBotApiUrl, validateBotWsUrl } from '../utils/urlSecurity.js';
@@ -125,7 +126,8 @@ const upload = multer({
 export function createBotsRouter(): Router {
   const router = express.Router();
 
-  // All routes require authentication
+  // Rate limit first (by IP), then auth
+  router.use(botsRateLimiter);
   router.use(authenticate);
 
   /**

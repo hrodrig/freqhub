@@ -152,3 +152,117 @@ export const healthApi = {
     return response.data;
   },
 };
+
+export interface BotActionResult {
+  botId: string;
+  botName: string;
+  success: boolean;
+  error?: string;
+  result?: unknown;
+}
+
+/**
+ * Trade Management - execute trades (force-enter / force-exit-all) across multiple bots
+ */
+export const tradeManagementApi = {
+  forceEnter: async (params: {
+    botIds: string[];
+    pair: string;
+    side?: 'long' | 'short';
+    ordertype?: 'limit' | 'market';
+    price?: number;
+    stakeamount?: number;
+    entryTag?: string;
+  }): Promise<BotActionResult[]> => {
+    const response = await apiClient.post<{ status: string; data: BotActionResult[] }>(
+      '/trade-management/force-enter',
+      params
+    );
+    return response.data.data;
+  },
+
+  forceExitAll: async (params: {
+    botIds: string[];
+    ordertype?: 'limit' | 'market';
+  }): Promise<BotActionResult[]> => {
+    const response = await apiClient.post<{ status: string; data: BotActionResult[] }>(
+      '/trade-management/force-exit-all',
+      params
+    );
+    return response.data.data;
+  },
+};
+
+/**
+ * Backtest Comparison - trigger/poll backtests and compare results across bots
+ */
+export const backtestApi = {
+  start: async (botId: string, params: {
+    timerange?: string;
+    timeframe?: string;
+  }): Promise<{ status: string; running: boolean }> => {
+    const response = await apiClient.post(`/backtest/${botId}/start`, params);
+    return response.data as { status: string; running: boolean };
+  },
+
+  status: async (botId: string): Promise<BacktestStatus> => {
+    const response = await apiClient.get<{ status: string; data: BacktestStatus }>(`/backtest/${botId}/status`);
+    return response.data.data;
+  },
+
+  abort: async (botId: string): Promise<void> => {
+    await apiClient.post(`/backtest/${botId}/abort`);
+  },
+};
+
+export interface BacktestStatus {
+  botId: string;
+  running: boolean;
+  progress?: number;
+  status?: string;
+  results?: {
+    strategy?: string;
+    totalTrades?: number;
+    profitTotalPct?: number;
+    profitTotalAbs?: number;
+    winRate?: number;
+    maxDrawdownPct?: number;
+    backtestStart?: string;
+    backtestEnd?: string;
+  } | null;
+  error?: string;
+}
+
+/**
+ * Alerts - centralized alerts aggregated from all bot instances' events
+ */
+export interface Alert {
+  id: string;
+  botId: string | null;
+  botName: string | null;
+  severity: 'info' | 'warning' | 'critical';
+  type: string;
+  message: string;
+  isAcknowledged: boolean;
+  createdAt: number;
+}
+
+export const alertsApi = {
+  list: async (params?: { unacknowledgedOnly?: boolean; limit?: number }): Promise<Alert[]> => {
+    const response = await apiClient.get<{ status: string; data: Alert[] }>('/alerts', { params });
+    return response.data.data;
+  },
+
+  acknowledge: async (id: string): Promise<void> => {
+    await apiClient.post(`/alerts/${id}/acknowledge`);
+  },
+
+  acknowledgeAll: async (): Promise<void> => {
+    await apiClient.post('/alerts/acknowledge-all');
+  },
+
+  unacknowledgedCount: async (): Promise<number> => {
+    const response = await apiClient.get<{ status: string; data: { count: number } }>('/alerts/unacknowledged-count');
+    return response.data.data.count;
+  },
+};

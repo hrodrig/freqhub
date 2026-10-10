@@ -9,6 +9,7 @@
  */
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import cors from 'cors';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -76,6 +77,16 @@ const authenticate = (req: express.Request, res: express.Response, next: express
 };
 
 app.use(authenticate);
+
+// Rate limiting (CodeQL: missing rate limiting)
+const apiRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { status: 'error', message: 'Too many requests' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(apiRateLimiter);
 
 // Bot API token cache
 let botToken: string | null = null;

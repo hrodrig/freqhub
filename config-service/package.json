@@ -1,6 +1,6 @@
 {
   "name": "freqhub-config-service",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "description": "Centralized configuration management service for FreqHub bots",
   "type": "module",
   "main": "dist/app.js",
@@ -16,6 +16,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
     "mongodb": "^6.12.0",
     "zod": "^3.24.1"
   },

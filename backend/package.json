@@ -1,6 +1,6 @@
 {
   "name": "freqhub-backend",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "description": "FreqHub Backend - Multi-bot dashboard for Freqtrade",
   "main": "dist/app.js",
   "type": "module",
@@ -33,6 +33,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.1",
+    "express-rate-limit": "^7.5.0",
     "http-proxy-middleware": "^3.0.3",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.3",

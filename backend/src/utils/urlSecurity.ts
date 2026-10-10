@@ -136,3 +136,20 @@ export function assertBotApiUrlAllowed(rawUrl: string): void {
   }
 }
 
+/**
+ * Validate proxy path to prevent path traversal and SSRF via path (Freqtrade API only).
+ * Path must start with /api/v1/ and must not contain "..", "\\", or null bytes.
+ */
+export function validateProxyPath(path: string): void {
+  if (typeof path !== 'string' || path.length === 0 || path.length > 512) {
+    throw new Error('Invalid proxy path');
+  }
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  if (!normalized.startsWith('/api/v1/')) {
+    throw new Error('Proxy path must start with /api/v1/');
+  }
+  if (normalized.includes('..') || normalized.includes('\\') || normalized.includes('\0')) {
+    throw new Error('Proxy path must not contain path traversal or invalid characters');
+  }
+}
+

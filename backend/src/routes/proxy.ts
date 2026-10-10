@@ -24,6 +24,7 @@ import { rateLimitService } from '../services/rateLimit.service.js';
 import { env } from '../config/env.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireBotViewAccess, requireBotOwnershipOrSuperadmin } from '../middleware/authorize.middleware.js';
+import { proxyRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { auditHelpers } from '../middleware/audit.middleware.js';
 
 /**
@@ -61,7 +62,8 @@ async function checkRateLimit(
 export function createProxyRouter(): Router {
   const router = express.Router();
 
-  // All routes require authentication
+  // Rate limit first (by IP), then auth
+  router.use(proxyRateLimiter);
   router.use(authenticate);
 
   // Helper to detect action from path and apply appropriate audit middleware

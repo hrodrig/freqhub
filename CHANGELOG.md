@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.23] - 2026-02-26
+
+### Fixed
+- **Code scanning (CodeQL SSRF):** Validated all user- and config-controlled inputs used in outgoing HTTP requests to prevent server-side request forgery. config-service: `validateSafeId` for `botId`/`botName`, `validateAgentUrl` for agent and bot API base URLs (new `requestSecurity.ts`). backend: `validateProxyPath` for proxy path (must start with `/api/v1/`, no path traversal).
+- **Code scanning (CodeQL):** Missing rate limiting on auth, audit, and health routes — added `express-rate-limit` middleware (auth 30/min, audit 60/min, health 60/min per IP). Clear-text logging of sensitive information — logger now sanitizes args (Error objects logged as message only). Prototype-polluting function in config-service `quickEdit` — reject `__proto__`, `constructor`, `prototype` in field path.
+- **Code scanning (CodeQL), second batch:** proxyService retry block now uses validated `cleanPath` only (no recompute from path). init.service: biased random replaced with `crypto.randomInt` for password generation. Rate limiting extended to backend proxy (120/min), bots (60/min), users (60/min); config-service configs (120/min), sync (60/min), health (60/min); config-agent global (120/min).
+
 ## [0.2.22] - 2026-02-01
 
 ### Added
@@ -264,7 +271,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic polling service
 - Rate limiting for API protection
 
-[Unreleased]: https://github.com/hrodrig/freqhub/compare/v0.2.22...HEAD
+[Unreleased]: https://github.com/hrodrig/freqhub/compare/v0.2.23...HEAD
+[0.2.23]: https://github.com/hrodrig/freqhub/compare/v0.2.22...v0.2.23
 [0.2.22]: https://github.com/hrodrig/freqhub/compare/v0.2.11...v0.2.22
 [0.2.8]: https://github.com/hrodrig/freqhub/compare/v0.2.4...v0.2.8
 [0.2.4]: https://github.com/hrodrig/freqhub/compare/v0.2.0...v0.2.4

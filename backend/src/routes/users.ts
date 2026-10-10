@@ -32,6 +32,7 @@ import {
 import { assignBotOwnership, removeBotOwnership, getBotsOwnedByUser } from '../services/botOwnershipService.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireSuperadmin } from '../middleware/authorize.middleware.js';
+import { usersRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { audit } from '../middleware/audit.middleware.js';
 import { getBotById } from '../services/botService.js';
 import { appLogger } from '../utils/logger.js';
@@ -39,7 +40,8 @@ import type { CreateUserRequest, UpdateUserRequest } from '../models/User.js';
 
 const router = Router();
 
-// All routes require authentication and superadmin role
+// Rate limit first (by IP) to cap abuse before auth
+router.use(usersRateLimiter);
 router.use(authenticate);
 router.use(requireSuperadmin);
 
