@@ -23,7 +23,10 @@ import { getBotWithCredentials } from '../services/botService.js';
 import { checkBotOwnership } from '../services/botOwnershipService.js';
 import { createAuditLog } from '../services/auditService.js';
 import { authenticate } from '../middleware/auth.middleware.js';
+import { tradeManagementRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { appLogger } from '../utils/logger.js';
+
+const MAX_BOTS_PER_ACTION = 50;
 
 /**
  * Trade Management routes - execute trades (force-enter / force-exit-all) across multiple
@@ -62,7 +65,10 @@ function requireBotAccessOrCollect(
 }
 
 const forceEnterSchema = z.object({
-  botIds: z.array(z.string().min(1)).min(1, 'At least one bot must be selected'),
+  botIds: z
+    .array(z.string().min(1))
+    .min(1, 'At least one bot must be selected')
+    .max(MAX_BOTS_PER_ACTION, `At most ${MAX_BOTS_PER_ACTION} bots per action`),
   pair: z.string().min(1, 'Pair is required'),
   side: z.enum(['long', 'short']).optional(),
   ordertype: z.enum(['limit', 'market']).optional(),
@@ -72,13 +78,17 @@ const forceEnterSchema = z.object({
 });
 
 const forceExitAllSchema = z.object({
-  botIds: z.array(z.string().min(1)).min(1, 'At least one bot must be selected'),
+  botIds: z
+    .array(z.string().min(1))
+    .min(1, 'At least one bot must be selected')
+    .max(MAX_BOTS_PER_ACTION, `At most ${MAX_BOTS_PER_ACTION} bots per action`),
   ordertype: z.enum(['limit', 'market']).optional(),
 });
 
 export function createTradeManagementRouter(): Router {
   const router = express.Router();
 
+  router.use(tradeManagementRateLimiter);
   router.use(authenticate);
 
   /**

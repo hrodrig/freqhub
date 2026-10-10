@@ -71,3 +71,12 @@ export const testRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/** Trade management: bulk force-enter / force-exit — stricter per-IP cap */
+export const tradeManagementRateLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  max: 20,
+  message: { error: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
