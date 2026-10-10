@@ -152,3 +152,43 @@ export const healthApi = {
     return response.data;
   },
 };
+
+export interface BotActionResult {
+  botId: string;
+  botName: string;
+  success: boolean;
+  error?: string;
+  result?: unknown;
+}
+
+/**
+ * Trade Management - execute trades (force-enter / force-exit-all) across multiple bots
+ */
+export const tradeManagementApi = {
+  forceEnter: async (params: {
+    botIds: string[];
+    pair: string;
+    side?: 'long' | 'short';
+    ordertype?: 'limit' | 'market';
+    price?: number;
+    stakeamount?: number;
+    entryTag?: string;
+  }): Promise<BotActionResult[]> => {
+    const response = await apiClient.post<{ status: string; data: BotActionResult[] }>(
+      '/trade-management/force-enter',
+      params
+    );
+    return response.data.data;
+  },
+
+  forceExitAll: async (params: {
+    botIds: string[];
+    ordertype?: 'limit' | 'market';
+  }): Promise<BotActionResult[]> => {
+    const response = await apiClient.post<{ status: string; data: BotActionResult[] }>(
+      '/trade-management/force-exit-all',
+      params
+    );
+    return response.data.data;
+  },
+};

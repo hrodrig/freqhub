@@ -30,6 +30,7 @@ import { createTestRouter } from './routes/test.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createAuditRouter } from './routes/audit.js';
 import { createUsersRouter } from './routes/users.js';
+import { createTradeManagementRouter } from './routes/tradeManagement.js';
 import { getDatabase } from './db/database.js';
 import { swaggerSpec } from './config/swagger.js';
 import { valkeyService } from './services/valkey.service.js';
@@ -118,6 +119,7 @@ app.use(`${basePath}/api/audit`, createAuditRouter());
 app.use(`${basePath}/api/users`, createUsersRouter());
 app.use(`${basePath}/api/bots`, createBotsRouter());
 app.use(`${basePath}/api/bots`, createProxyRouter());
+app.use(`${basePath}/api/trade-management`, createTradeManagementRouter());
 
 // Test routes (only in development)
 if (env.NODE_ENV === 'development') {
