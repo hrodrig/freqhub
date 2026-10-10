@@ -18,8 +18,8 @@
 
 import express, { type Router, type Request, type Response } from 'express';
 import multer, { type FileFilterCallback } from 'multer';
-import * as XLSX from 'xlsx';
 import { z } from 'zod';
+import { writeSheetBuffer } from '../utils/excel.js';
 import {
   getAllBots,
   getBotById,
@@ -201,28 +201,32 @@ export function createBotsRouter(): Router {
    *       200:
    *         description: XLSX template
    */
-  router.get('/import/template', (_req: Request, res: Response) => {
-    const header = ['name', 'apiUrl', 'wsUrl', 'agentUrl', 'username', 'password', 'notes', 'configMapName', 'configPath', 'isEnabled'];
-    const example = [
-      'freqhub-example-bot',
-      'http://localhost:8080',
-      '',
-      'http://localhost:3010',
-      'freqtrader',
-      'ChangeMe',
-      'Example bot',
-      '',
-      '/freqtrade/user_data/config.json',
-      'True',
-    ];
-    const worksheet = XLSX.utils.aoa_to_sheet([header, example]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'bots');
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+  router.get('/import/template', async (_req: Request, res: Response) => {
+    try {
+      const header = ['name', 'apiUrl', 'wsUrl', 'agentUrl', 'username', 'password', 'notes', 'configMapName', 'configPath', 'isEnabled'];
+      const example = [
+        'freqhub-example-bot',
+        'http://localhost:8080',
+        '',
+        'http://localhost:3010',
+        'freqtrader',
+        'ChangeMe',
+        'Example bot',
+        '',
+        '/freqtrade/user_data/config.json',
+        'True',
+      ];
+      const buffer = await writeSheetBuffer('bots', [header, example]);
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="example_bots_list.xlsx"');
-    res.send(buffer);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="example_bots_list.xlsx"');
+      res.send(buffer);
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to build template',
+      });
+    }
   });
 
   /**
@@ -263,10 +267,7 @@ export function createBotsRouter(): Router {
         bot.configPath ?? '',
         bot.isEnabled ? 'True' : 'False',
       ]);
-      const worksheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'bots');
-      const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }) as Buffer;
+      const buffer = await writeSheetBuffer('bots', [header, ...rows]);
 
       const now = new Date();
       const timestamp = [

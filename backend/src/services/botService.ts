@@ -27,7 +27,7 @@ import { cacheStatsService } from './cacheStats.service.js';
 import { eventBusService } from './eventBus.service.js';
 import { appLogger } from '../utils/logger.js';
 import { assertBotApiUrlAllowed, validateBotApiUrl, validateBotWsUrl } from '../utils/urlSecurity.js';
-import * as XLSX from 'xlsx';
+import { readFirstSheetRows } from '../utils/excel.js';
 
 export interface BotImportError {
   row: number;
@@ -330,14 +330,8 @@ function parseBooleanStrict(value: unknown): { value?: boolean; invalid: boolean
   return { value: undefined, invalid: true };
 }
 
-function parseXlsxRows(buffer: Buffer): ImportRow[] {
-  const workbook = XLSX.read(buffer, { type: 'buffer' });
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) {
-    return [];
-  }
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+async function parseXlsxRows(buffer: Buffer): Promise<ImportRow[]> {
+  const rows = await readFirstSheetRows(buffer);
   if (rows.length === 0) {
     return [];
   }
@@ -409,7 +403,7 @@ export async function importBotsFromXlsx(
   buffer: Buffer,
   options: { role: string; ownedBotIds?: string[] }
 ): Promise<BotImportResult> {
-  const rows = parseXlsxRows(buffer);
+  const rows = await parseXlsxRows(buffer);
   const result: BotImportResult = {
     total: rows.length,
     created: 0,
