@@ -27,6 +27,8 @@
 !ENV_SETUP.md
 !DONATIONS.md
 !CHANGELOG.md
+!docs/
+!docs/**/*
 
 # ============================================
 # SOURCE CODE (will be added as we create files)
