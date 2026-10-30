@@ -37,7 +37,7 @@
     "express-rate-limit": "^7.5.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.0.2",
+    "multer": "^2.5.0",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
